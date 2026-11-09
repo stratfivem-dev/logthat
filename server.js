@@ -7,6 +7,9 @@ const FILES = {
   'index.html': 'text/html; charset=utf-8',
   'sw.js': 'text/javascript; charset=utf-8',
   'style.css': 'text/css; charset=utf-8',
+  'counter.html': 'text/html; charset=utf-8',
+  'counter.css': 'text/css; charset=utf-8',
+  'counter.js': 'text/javascript; charset=utf-8',
   'manifest.json': 'application/manifest+json',
   'favicon.ico': 'image/x-icon',
   'favicon-32.png': 'image/png',
@@ -21,7 +24,8 @@ http
     let name = url.replace(/^\/+/, '');
     // Any path without a file extension (/, /health, /anything) serves the app,
     // so health checks and refreshes always get a 200.
-    if (!name || !path.extname(name)) name = 'index.html';
+    if (name === 'counter') name = 'counter.html';
+    else if (!name || !path.extname(name)) name = 'index.html';
     const type = FILES[name];
     if (!type) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });

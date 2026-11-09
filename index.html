@@ -112,7 +112,7 @@ function addField(c,cls,v){const i=document.createElement('input');i.className=c
 async function boot(){const {data}=await sb.auth.getSession();data.session?start():$('login').classList.remove('hide')}
 $('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)toast(error.message);else{$('login').classList.add('hide');start()}};
 async function start(){
-  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();
+  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();listen();
   document.querySelectorAll('.dayin').forEach(i=>{i.value=day;i.onchange=()=>{day=i.value;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs()}});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   window.addEventListener('online',flush);setInterval(flush,30000);
@@ -185,7 +185,7 @@ function renderStops(){
     const head=`<div class="row sp"><b>${i+1}. ${esc(s.shop_name)}</b>${s.done?'':`<span class="row"><button class="g s" data-up="${s.id}">▲</button><button class="g s" data-dn="${s.id}">▼</button><button class="g s" data-rm="${s.id}">✕</button></span>`}</div>`;
     if(s.done)return `<div class="stop done">${head}<div class="mut">${s.status==='failed'?'Not delivered · '+esc(s.reason||''):'Delivered · '+esc(pf(s.psi))}</div></div>`;
     const dp=(drafts[s.id]||{}).psi,pv=(dp&&dp.length?dp:(s.psi&&s.psi.length?s.psi:['']));
-    return `<div class="stop">${head}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="sps" data-id="${s.id}" style="margin-top:8px">${pv.map(v=>`<input class="sp-in" data-id="${s.id}" value="${esc(v)}" placeholder="PSI" inputmode="decimal">`).join('')}</div><input class="sp-note" data-id="${s.id}" value="${esc((drafts[s.id]||{}).note||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-add="${s.id}">+ PSI</button><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
+    return `<div class="stop">${head}${s.assigned_by?'<div class="mut">📥 From the counter</div>':''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="sps" data-id="${s.id}" style="margin-top:8px">${pv.map(v=>`<input class="sp-in" data-id="${s.id}" value="${esc(v)}" placeholder="PSI" inputmode="decimal">`).join('')}</div><input class="sp-note" data-id="${s.id}" value="${esc(((drafts[s.id]||{}).note??s.note)||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-add="${s.id}">+ PSI</button><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
   }).join('')||'<p class="mut">No stops yet. Tap a shop in Quick add, or search below.</p>';
   $('clrdone').classList.toggle('hide',!stops.some(s=>s.done));renderRet();
   try{localStorage.setItem('dlstops',JSON.stringify(stops))}catch(e){}
@@ -255,6 +255,24 @@ $('padd').onclick=async()=>{
   $('ppsis').innerHTML='<input class="pp" placeholder="PSI" inputmode="decimal">';
   if(!row.lat&&G.maps)toast('Added without a map pin. Pick a result from the search list to get a pin.');
 };
+
+/* ---------- alerts for deliveries sent from the counter ---------- */
+let ME=null,actx=null,reloadT=null;
+function unlockAudio(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume()}catch(e){}}
+['click','touchstart'].forEach(ev=>document.addEventListener(ev,unlockAudio,{passive:true}));
+function beep(){
+  if(!actx)return;
+  [0,.3].forEach(t=>{const o=actx.createOscillator(),g=actx.createGain(),n=actx.currentTime+t;o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.001,n);g.gain.exponentialRampToValueAtTime(.4,n+.02);g.gain.exponentialRampToValueAtTime(.001,n+.22);o.connect(g);g.connect(actx.destination);o.start(n);o.stop(n+.25)});
+}
+function newStopAlert(row){beep();try{if(navigator.vibrate)navigator.vibrate([200,100,200])}catch(e){}toast('New delivery: '+row.shop_name,8000)}
+const reloadSoon=()=>{clearTimeout(reloadT);reloadT=setTimeout(loadStops,400)};
+async function listen(){
+  const {data:u}=await sb.auth.getUser();ME=u.user&&u.user.id;if(!ME)return;
+  sb.channel('mystops')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'plan_stops',filter:'user_id=eq.'+ME},p=>{if(p.new&&p.new.assigned_by){newStopAlert(p.new);reloadSoon()}})
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'plan_stops'},reloadSoon)
+    .subscribe();
+}
 
 /* ---------- my shops (quick list) ---------- */
 let myShops=[],editShops=false;

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counter · Delivery Log</title>
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="counter.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body class="counter">
+<main class="wide">
+  <div id="login" class="card narrow hide">
+    <h1 style="margin-bottom:14px">Counter</h1>
+    <input id="em" type="email" placeholder="Email" autocomplete="username">
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="loginBtn" style="width:100%">Sign in</button>
+  </div>
+
+  <div id="noaccess" class="card narrow hide">
+    <b>This account isn’t set up as a counter.</b>
+    <p class="mut">Ask the person who runs the system to add you to the team as a counter.</p>
+    <button class="g" id="out2">Sign out</button>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="top"><h1>Counter</h1>
+      <input id="day" type="date" style="width:auto;margin:0">
+      <button class="g s" id="print">Print</button>
+      <button class="g s" id="out">Sign out</button>
+    </div>
+
+    <div id="keybox" class="card hide">
+      <b>Add your Google Maps key</b>
+      <p class="mut" style="margin:6px 0 10px">Needed for shop search. It’s saved only in this browser.</p>
+      <input id="keyin" placeholder="Paste key here">
+      <button id="keysave" style="width:100%">Save key</button>
+    </div>
+
+    <div class="cgrid">
+      <div class="noprint">
+        <div class="card">
+          <b>Send a delivery</b>
+          <div class="mut" style="margin:12px 0 6px">Driver</div>
+          <select id="driver"></select>
+          <div class="mut" style="margin:6px 0">Shop</div>
+          <input id="cfilter" placeholder="Filter saved shops">
+          <div id="cchips" class="chips" style="max-height:150px;overflow:auto;margin-bottom:10px"></div>
+          <div id="csearch"><input id="plain" placeholder="Search a shop"></div>
+          <label id="cmech" class="mut hide" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="cmechon" checked style="width:auto;margin:0"> Car businesses only (faster)</label>
+          <div id="csel" class="mut"></div>
+          <div id="cpsis"><input class="cpsi" placeholder="PSI" inputmode="decimal"></div>
+          <input id="cnote" placeholder="Note for the driver (optional)">
+          <div class="row"><button class="g" id="cmore">+ PSI</button><button id="send" style="flex:1">Send to driver</button></div>
+        </div>
+      </div>
+      <div>
+        <div id="boards" class="boards"></div>
+      </div>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="counter.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@ const fmt = (t) => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute:
 const dstr = (d) => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
 const pf = (a) => (a && a.length ? a.map((n) => 'PSI-' + n).join(', ') : 'No PSI');
 const gKey = () => localStorage.getItem('gmkey');
-let ME = null, members = [], picked = null, G = {}, myShops = [], day = dstr(Date.now()), timer = null;
+let STOPS = [], ME = null, members = [], picked = null, G = {}, myShops = [], day = dstr(Date.now()), timer = null;
 
 function toast(t, ms = 4500) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => (e.style.display = 'none'), ms); }
 const nums = (sel) => [...document.querySelectorAll(sel)].map((i) => parseFloat(i.value)).filter((n) => !isNaN(n));
@@ -54,6 +54,7 @@ async function loadBoard() {
     sb.from('pickups').select('*').in('user_id', ids).gte('picked_at', a.toISOString()).lt('picked_at', b.toISOString()).order('picked_at'),
   ]);
   const err = s.error || d.error || p.error; if (err) return toast(err.message);
+  STOPS = s.data || [];
   const isToday = day === dstr(Date.now());
   $('boards').innerHTML = ids.map((id) => {
     const m = members.find((x) => x.user_id === id);
@@ -61,14 +62,16 @@ async function loadBoard() {
     const ds = (d.data || []).filter((x) => x.user_id === id), pk = (p.data || []).filter((x) => x.user_id === id);
     const total = ps.length + ds.length, pct = total ? Math.round((ds.length / total) * 100) : 0;
     return `<div class="card"><div class="row sp"><b style="font-size:17px">${esc(m.display_name || 'Driver')}</b><span class="mut">${ds.length} of ${total} done</span></div><div class="bar"><i style="width:${pct}%"></i></div>`
-      + (ps.length ? `<div class="sec">Still to deliver</div>` + ps.map((x) => `<div class="ln"><span>${esc(x.shop_name)}<br><span class="mut">${esc(pf(x.psi))}${x.note ? ' · ' + esc(x.note) : ''}</span></span><button class="g s" data-rm="${x.id}">Remove</button></div>`).join('') : '')
+      + (ps.length ? `<div class="sec">Still to deliver</div>` + ps.map((x) => `<div class="ln"><span>${esc(x.shop_name)}<br><span class="mut">${esc(pf(x.psi))}${x.note ? ' · ' + esc(x.note) : ''}</span></span><span class="row"><button class="g s" data-ed="${x.id}">Edit</button><button class="g s" data-rm="${x.id}">Remove</button></span></div>`).join('') : '')
       + (ds.length ? `<div class="sec">Done</div>` + ds.map((l) => `<div class="ln"><span>${fmt(l.delivered_at)} · ${esc(l.shop_name)}<br>${l.status === 'failed' ? `<span class="bad">Not delivered · ${esc(l.reason || '')}</span>` : `<span class="mut">${esc(pf(l.psi))}${l.note ? ' · ' + esc(l.note) : ''}</span>`}</span></div>`).join('') : '')
       + (pk.length ? `<div class="sec">Pickups</div>` + pk.map((x) => `<div class="ln"><span>↩ ${fmt(x.picked_at)} · ${esc(x.shop_name)}${x.note ? '<br><span class="mut">' + esc(x.note) + '</span>' : ''}</span></div>`).join('') : '')
       + (!ps.length && !ds.length && !pk.length ? '<p class="mut">Nothing yet.</p>' : '') + '</div>';
   }).join('') || '<p class="mut">No drivers in this team yet.</p>';
 }
 $('boards').onclick = async (e) => {
-  const b = e.target.closest('button'); if (!b || !b.dataset.rm) return;
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.ed) return editStop(b.dataset.ed);
+  if (!b.dataset.rm) return;
   if (!confirm('Remove this delivery from the driver’s list?')) return;
   const r = await sb.from('plan_stops').delete().eq('id', b.dataset.rm);
   if (r.error) toast(r.error.message); else loadBoard();
@@ -96,6 +99,7 @@ $('send').onclick = async () => {
   const name = ((picked && picked.name) || (G.ac ? G.ac.value : ($('plain') || {}).value) || '').trim();
   if (!name) return toast('Pick or search for a shop.');
   const driver = $('driver').value; localStorage.setItem('cdriver', driver);
+  const dup = await dupCheck(nums('.cpsi')); if (dup && !confirm(dup + ' Send it anyway?')) return;
   const mx = await sb.from('plan_stops').select('sort_order').eq('user_id', driver).order('sort_order', { ascending: false }).limit(1);
   const next = mx.data && mx.data[0] ? mx.data[0].sort_order + 1 : 0;
   const row = { user_id: driver, assigned_by: ME.id, shop_name: name, psi: nums('.cpsi'), note: $('cnote').value.trim() || null, sort_order: next };
@@ -134,4 +138,34 @@ function mountSearch() {
   };
   el.addEventListener('gmp-select', h); el.addEventListener('gmp-placeselect', h);
   $('csearch').innerHTML = ''; $('csearch').appendChild(el); G.ac = el; picked = null; renderChips(); $('cmech').classList.remove('hide');
+}
+
+/* ---------- edit a delivery that was already sent ---------- */
+function editStop(id) {
+  const st = STOPS.find((x) => x.id === id); if (!st) return;
+  $('dlgbody').innerHTML = `<b style="font-size:18px">Edit delivery</b><div class="mut" style="margin:2px 0 12px">${esc(st.shop_name)} · ${esc(nameOf(st.user_id))}</div><div class="mut">PSI numbers, separated by commas</div><input id="ed-psi" value="${esc((st.psi || []).join(', '))}" inputmode="decimal"><div class="mut">Note for the driver</div><input id="ed-note" value="${esc(st.note || '')}"><div class="row"><button id="ed-ok" style="flex:1">Save</button><button class="g" id="ed-x">Cancel</button></div>`;
+  $('dlg').showModal();
+  $('ed-x').onclick = () => $('dlg').close();
+  $('ed-ok').onclick = async () => {
+    const psi = $('ed-psi').value.split(/[,\s]+/).map(parseFloat).filter((n) => !isNaN(n));
+    const r = await sb.from('plan_stops').update({ psi, note: $('ed-note').value.trim() || null }).eq('id', id);
+    if (r.error) return toast(r.error.message);
+    $('dlg').close(); toast('Saved. The driver’s list will update.'); loadBoard();
+  };
+}
+function nameOf(id) { return (members.find((x) => x.user_id === id) || {}).display_name || 'Driver'; }
+
+/* ---------- duplicate warning ---------- */
+async function dupCheck(psi) {
+  if (!psi.length) return null;
+  const a = new Date(); a.setHours(0, 0, 0, 0); const ids = members.filter((x) => x.role === 'driver' || x.user_id === ME.id).map((x) => x.user_id);
+  const [d, s] = await Promise.all([
+    sb.from('deliveries').select('shop_name,psi,delivered_at,user_id').in('user_id', ids).gte('delivered_at', a.toISOString()).neq('status', 'failed'),
+    sb.from('plan_stops').select('shop_name,psi,user_id').in('user_id', ids).eq('done', false),
+  ]);
+  const has = (r) => (r.psi || []).some((n) => psi.includes(Number(n)));
+  const pend = (s.data || []).find(has), done = (d.data || []).find(has);
+  if (pend) return `PSI-${psi.find((n) => (pend.psi || []).map(Number).includes(n))} is already on ${nameOf(pend.user_id)}’s list for ${pend.shop_name}.`;
+  if (done) return `PSI-${psi.find((n) => (done.psi || []).map(Number).includes(n))} was already delivered today to ${done.shop_name}.`;
+  return null;
 }

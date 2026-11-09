@@ -75,6 +75,8 @@
     </section>
 
     <section id="v-log" class="hide">
+      <div class="row" style="margin-bottom:10px"><input id="lsq" placeholder="Search all days: shop or PSI number" style="margin:0"><button id="lsgo">Search</button></div>
+      <div id="lsres"></div>
       <div class="row sp" style="margin-bottom:8px"><span class="mut">Day</span><input class="dayin" type="date" style="width:auto;margin:0"></div>
       <div class="card"><div id="loglist"></div>
         <div class="row sp" style="margin-top:10px"><span class="mut" id="tot"></span><span class="row"><button id="exp" class="g">⬇ Export</button><button id="tsum" class="g hide">Teams</button><button id="mail" class="g">✉️ Email</button></span></div>
@@ -230,6 +232,8 @@ $('stops').onclick=async e=>{
     const psi=nums(`.sp-in[data-id="${id}"]`);
     const s=stops[i],nt=document.querySelector(`.sp-note[data-id="${id}"]`);
     b.disabled=true;
+    const dup=await dupCheck(psi);
+    if(dup&&!confirm('PSI-'+dup.n+' was already logged today for '+dup.l.shop_name+' at '+fmt(dup.l.delivered_at)+'. Log it again?')){b.disabled=false;return}
     const ok=await commitStop(s,{photo:pend[id]||null,row:{psi,note:(nt&&nt.value.trim())||null}},'Logged '+s.shop_name+' · '+pf(psi));
     if(!ok)b.disabled=false;
   }else if(b.dataset.up||b.dataset.dn){
@@ -268,8 +272,10 @@ function newStopAlert(row){beep();try{if(navigator.vibrate)navigator.vibrate([20
 const reloadSoon=()=>{clearTimeout(reloadT);reloadT=setTimeout(loadStops,400)};
 async function listen(){
   const {data:u}=await sb.auth.getUser();ME=u.user&&u.user.id;if(!ME)return;
+  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine&&!flushing)loadStops()},60000);
   sb.channel('mystops')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'plan_stops',filter:'user_id=eq.'+ME},p=>{if(p.new&&p.new.assigned_by){newStopAlert(p.new);reloadSoon()}})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'plan_stops',filter:'user_id=eq.'+ME},p=>{if(p.new&&p.new.assigned_by&&!p.new.done){delete drafts[p.new.id];reloadSoon()}})
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'plan_stops'},reloadSoon)
     .subscribe();
 }
@@ -309,7 +315,7 @@ $('shopfilter').oninput=renderShops;$('rshopfilter').oninput=renderShops;
 $('shopedit').onclick=()=>{editShops=!editShops;$('shopedit').textContent=editShops?'Done':'✎ Edit';renderShops()};
 
 /* ---------- settings + Teams ---------- */
-let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false};
+let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false,weekly_on:false};
 try{SET={...SET,...JSON.parse(localStorage.getItem('dlset')||'{}')}}catch(e){}
 const okHook=u=>{try{const h=new URL(u);return h.protocol==='https:'&&/(\.logic\.azure\.com|\.powerplatform\.com|\.webhook\.office\.com|\.office\.com)$/.test(h.hostname)}catch(e){return false}};
 const fixNulls=o=>{for(const k in o)if(o[k]===null)o[k]=typeof SET[k]==='boolean'?false:'';return o};
@@ -345,7 +351,7 @@ async function saveSettings(close){
   const hook=$('s-hook').value.trim();
   if(hook&&!okHook(hook)){toast('That doesn’t look like a Teams workflow address.',7000);return false}
   const {data:u}=await sb.auth.getUser();
-  const row={user_id:u.user.id,display_name:$('s-name').value.trim()||null,timezone:$('s-tz').value,email_on:$('s-eon').checked,email_to:$('s-eto').value.trim()||null,email_time:$('s-etime').value||'16:55',teams_on:$('s-ton').checked&&!!hook,teams_webhook:hook||null,teams_list:$('s-tl').checked,teams_delivered:$('s-td').checked,teams_pickups:$('s-tp').checked,teams_eod:$('s-teod').checked};
+  const row={user_id:u.user.id,display_name:$('s-name').value.trim()||null,timezone:$('s-tz').value,email_on:$('s-eon').checked,email_to:$('s-eto').value.trim()||null,email_time:$('s-etime').value||'16:55',teams_on:$('s-ton').checked&&!!hook,teams_webhook:hook||null,teams_list:$('s-tl').checked,teams_delivered:$('s-td').checked,teams_pickups:$('s-tp').checked,teams_eod:$('s-teod').checked,weekly_on:$('s-weekly').checked};
   const r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
   if(r.error){toast(r.error.message);return false}
   SET={...SET,...fixNulls({...row})};try{localStorage.setItem('dlset',JSON.stringify(SET))}catch(e){}
@@ -359,33 +365,81 @@ function openSettings(){
   $('dlgbody').onclick=null;
   const zones=['Pacific/Auckland','Australia/Sydney','Australia/Brisbane','Australia/Adelaide','Australia/Perth','Pacific/Fiji','UTC'];
   if(!zones.includes(SET.timezone))zones.unshift(SET.timezone);
-  const ck=(id,t,on)=>`<label class="row" style="margin:8px 0"><input type="checkbox" id="${id}" ${on?'checked':''} style="width:20px;height:20px;margin:0"><span>${t}</span></label>`;
-  const sec=t=>`<div class="mut" style="margin:16px 0 6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12.5px">${t}</div>`;
-  $('dlgbody').innerHTML=`<b style="font-size:18px">Settings</b><div style="max-height:68vh;overflow:auto;margin-top:6px">
-  ${sec('You')}<div class="mut">Name shown in Teams messages</div><input id="s-name" value="${esc(SET.display_name)}" placeholder="Optional">
-  <div class="mut">Time zone (for emails and Teams times)</div><select id="s-tz">${zones.map(z=>`<option ${z===SET.timezone?'selected':''}>${z}</option>`).join('')}</select>
-  ${sec('End-of-day email')}${ck('s-eon','Email me the day’s log',SET.email_on)}
-  <div class="mut">Send to (blank = your login email)</div><input id="s-eto" type="email" value="${esc(SET.email_to)}" placeholder="you@example.com">
-  <div class="mut">End-of-day time (email and Teams)</div><input id="s-etime" type="time" value="${esc(SET.email_time||'16:55')}">
-  ${sec('Teams')}${ck('s-ton','Post to my Teams chat',SET.teams_on)}
-  <div class="mut">Teams workflow address</div><input id="s-hook" value="${esc(SET.teams_webhook)}" placeholder="https://…logic.azure.com/…" autocomplete="off">
-  ${ck('s-tl','Show a “Send to Teams” button for my To deliver list',SET.teams_list)}${ck('s-td','Post a message when I deliver, with the time',SET.teams_delivered)}${ck('s-tp','Post a message when I log a pickup',SET.teams_pickups)}${ck('s-teod','Send an end-of-day summary to Teams',SET.teams_eod)}
-  <button class="g" id="s-test" style="width:100%;margin-top:6px">Send a test message</button>
-  ${sec('This phone')}<div class="mut">Google key (leave blank to keep the saved one)</div><input id="s-gkey" placeholder="${gKey()?'A key is saved on this phone':'Paste key'}" autocomplete="off">
-  </div><div class="row" style="margin-top:14px"><button id="s-save" style="flex:1">Save</button><button class="g" id="s-x">Cancel</button></div>
-  <button class="g s" id="s-out" style="margin-top:12px">Sign out</button>`;
+  const times=[];for(let h=5;h<=23;h++)for(const m of [0,15,30,45])times.push(String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'));
+  const cur=SET.email_time||'16:55';if(!times.includes(cur))times.push(cur);times.sort();
+  const lab=t=>{const [h,m]=t.split(':').map(Number);return ((h+11)%12+1)+':'+String(m).padStart(2,'0')+' '+(h<12?'am':'pm')};
+  const sw=(id,on)=>`<label class="switch"><input type="checkbox" id="${id}" ${on?'checked':''}><span></span></label>`;
+  const row=(t,sub,ctl,f)=>`<div class="srow"${f?` data-for="${f}"`:''}><div class="stxt"><b>${t}</b>${sub?`<small>${sub}</small>`:''}</div>${ctl}</div>`;
+  const opt=(v,t,on)=>`<option value="${v}" ${on?'selected':''}>${t}</option>`;
+  $('dlgbody').innerHTML=`<div class="sset"><div class="shead"><b>Settings</b><button class="g s" id="s-x">Close</button></div><div class="sbody">
+  <div class="slabel">You</div><div class="sgroup">
+   ${row('Name','Shown in Teams messages',`<input class="sin" id="s-name" value="${esc(SET.display_name)}" placeholder="Optional">`)}
+   ${row('Time zone','For emails and Teams times',`<select class="sin" id="s-tz">${zones.map(z=>opt(z,z.replace('_',' '),z===SET.timezone)).join('')}</select>`)}
+  </div>
+  <div class="slabel">End of day</div><div class="sgroup">
+   ${row('Send time','For the email and the Teams summary',`<select class="sin" id="s-etime">${times.map(t=>opt(t,lab(t),t===cur)).join('')}</select>`)}
+   ${row('Email me the day’s log','',sw('s-eon',SET.email_on))}
+   ${row('Send to','Blank uses your login email',`<input class="sin" id="s-eto" type="email" value="${esc(SET.email_to)}" placeholder="you@example.com">`,'s-eon')}
+   ${row('Friday weekly summary','A week of deliveries by day and by shop',sw('s-weekly',SET.weekly_on))}
+  </div>
+  <div class="slabel">Teams</div><div class="sgroup">
+   ${row('Post to my Teams chat','',sw('s-ton',SET.teams_on))}
+   ${row('Workflow address','',`<input class="sin" id="s-hook" value="${esc(SET.teams_webhook)}" placeholder="https://…logic.azure.com/…" autocomplete="off">`,'s-ton')}
+   ${row('To deliver list','Adds a Send to Teams button',sw('s-tl',SET.teams_list),'s-ton')}
+   ${row('Each delivery','Posted with the time and run progress',sw('s-td',SET.teams_delivered),'s-ton')}
+   ${row('Each pickup','',sw('s-tp',SET.teams_pickups),'s-ton')}
+   ${row('End-of-day summary','',sw('s-teod',SET.teams_eod),'s-ton')}
+   <div class="srow" data-for="s-ton"><button class="g s" id="s-test">Send a test message</button></div>
+  </div>
+  <div class="slabel">This device</div><div class="sgroup">
+   ${row('Google key',gKey()?'A key is saved on this device':'Needed for search and the map',`<input class="sin" id="s-gkey" placeholder="${gKey()?'Replace key':'Paste key'}" autocomplete="off">`)}
+  </div></div>
+  <div class="sfoot"><button id="s-save" style="flex:1">Save</button><button class="g" id="s-out">Sign out</button></div></div>`;
   $('dlg').showModal();
+  document.querySelectorAll('#dlgbody [data-for]').forEach(r=>{const w=$(r.dataset.for),u=()=>r.classList.toggle('hide',!w.checked);w.addEventListener('change',u);u()});
   $('s-x').onclick=()=>$('dlg').close();
   $('s-save').onclick=()=>saveSettings(true);
   $('s-out').onclick=signOut;
   $('s-test').onclick=async()=>{
     if(!$('s-hook').value.trim())return toast('Paste your Teams workflow address first.');
-    $('s-ton').checked=true;if(!await saveSettings(false))return;
+    if(!await saveSettings(false))return;
     const r=await sb.functions.invoke('teams-notify',{body:{type:'test'}});
     toast(r.error||(r.data&&r.data.error)?'Test failed. Check the address.':'Test sent. Look in Teams.',6000);
   };
 }
 $('setbtn').onclick=openSettings;
+
+/* ---------- search all days + duplicate check ---------- */
+async function myId(){const {data:u}=await sb.auth.getUser();return u.user&&u.user.id}
+async function searchAll(){
+  const q=$('lsq').value.trim().replace(/[,()%*]/g,'');
+  if(!q){$('lsres').innerHTML='';return}
+  const uid=await myId();
+  let flt=`shop_name.ilike.%${q}%`;if(/^\d+(\.\d+)?$/.test(q))flt+=`,psi.cs.{${q}}`;
+  const [d,p]=await Promise.all([
+    sb.from('deliveries').select('*').eq('user_id',uid).or(flt).order('delivered_at',{ascending:false}).limit(50),
+    sb.from('pickups').select('*').eq('user_id',uid).ilike('shop_name','%'+q+'%').order('picked_at',{ascending:false}).limit(20)]);
+  if(d.error)return toast(isNet(d.error)?'No signal. Try again when you’re back online.':d.error.message);
+  const dt=t=>new Date(t).toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})+' '+fmt(t);
+  const rows=[...(d.data||[]).map(l=>({t:l.delivered_at,h:`<b>${esc(l.shop_name)}</b><br><span class="mut">${l.status==='failed'?'Not delivered · '+esc(l.reason||''):esc(pf(l.psi))}${l.note?' · '+esc(l.note):''}</span>`})),
+    ...(p.data||[]).map(l=>({t:l.picked_at,h:`↩ <b>${esc(l.shop_name)}</b><br><span class="mut">Pickup${l.note?' · '+esc(l.note):''}</span>`}))].sort((a,b)=>new Date(b.t)-new Date(a.t));
+  $('lsres').innerHTML='<div class="card"><div class="row sp"><b>Results</b><button class="g s" id="lsclr">Clear</button></div>'+(rows.map(r=>`<div class="del"><span>${dt(r.t)}<br>${r.h}</span><button class="g s" data-open="${dstr(r.t)}">Open day</button></div>`).join('')||'<p class="mut">No matches.</p>')+'</div>';
+  $('lsclr').onclick=()=>{$('lsres').innerHTML='';$('lsq').value=''};
+}
+$('lsgo').onclick=searchAll;$('lsq').onkeydown=e=>{if(e.key==='Enter')searchAll()};
+$('lsres').onclick=e=>{const b=e.target.closest('button');if(!b||!b.dataset.open)return;day=b.dataset.open;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs();window.scrollTo({top:0,behavior:'smooth'})};
+async function dupCheck(psi){
+  if(!psi.length)return null;
+  const hit=(arr)=>arr.find(l=>(l.psi||[]).some(n=>psi.includes(Number(n))));
+  const q=queue.filter(x=>!x.kind&&x.row.status!=='failed').map(x=>x.row);
+  const local=hit(q);if(local)return {l:local,n:psi.find(n=>(local.psi||[]).map(Number).includes(n))};
+  try{
+    const a=new Date();a.setHours(0,0,0,0);
+    const r=await sb.from('deliveries').select('shop_name,psi,delivered_at').gte('delivered_at',a.toISOString()).neq('status','failed');
+    if(r.error)return null;
+    const h=hit(r.data||[]);return h?{l:h,n:psi.find(n=>(h.psi||[]).map(Number).includes(n))}:null;
+  }catch(e){return null}
+}
 
 /* ---------- log, edit, export, email ---------- */
 function renderLog(){

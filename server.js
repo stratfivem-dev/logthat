@@ -8,6 +8,8 @@ const FILES = {
   'sw.js': 'text/javascript; charset=utf-8',
   'style.css': 'text/css; charset=utf-8',
   'manifest.json': 'application/manifest+json',
+  'favicon.ico': 'image/x-icon',
+  'favicon-32.png': 'image/png',
   'icon-192.png': 'image/png',
   'icon-512.png': 'image/png',
   'icon-maskable-512.png': 'image/png',

@@ -38,7 +38,7 @@ http
       }
       res.writeHead(200, {
         'Content-Type': type,
-        'Cache-Control': name === 'sw.js' || name === 'index.html' ? 'no-cache' : 'public, max-age=86400',
+        'Cache-Control': /\.(png|ico)$/.test(name) ? 'public, max-age=86400' : 'no-cache',
       });
       if (req.method === 'HEAD') return res.end();
       res.end(data);

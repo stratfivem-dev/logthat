@@ -83,7 +83,7 @@
   </div>
 </main>
 
-<div class="nav hide" id="nav"><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button></div>
+<div class="nav hide" id="nav"><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button><a href="counter" id="navcounter" class="hide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg><span>Dispatch</span></a></div>
 <dialog id="dlg"><div id="dlgbody"></div></dialog>
 <div class="toast" id="toast"></div>
 
@@ -112,7 +112,7 @@ function addField(c,cls,v){const i=document.createElement('input');i.className=c
 async function boot(){const {data}=await sb.auth.getSession();data.session?start():$('login').classList.remove('hide')}
 $('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)toast(error.message);else{$('login').classList.add('hide');start()}};
 async function start(){
-  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();listen();
+  $('app').classList.remove('hide');$('nav').classList.remove('hide');document.body.classList.add('in');checkRole();updPend();renderShops();loadShops();loadSettings();listen();
   document.querySelectorAll('.dayin').forEach(i=>{i.value=day;i.onchange=()=>{day=i.value;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs()}});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   window.addEventListener('online',flush);setInterval(flush,30000);
@@ -268,8 +268,10 @@ function newStopAlert(row){beep();try{if(navigator.vibrate)navigator.vibrate([20
 const reloadSoon=()=>{clearTimeout(reloadT);reloadT=setTimeout(loadStops,400)};
 async function listen(){
   const {data:u}=await sb.auth.getUser();ME=u.user&&u.user.id;if(!ME)return;
+  setInterval(()=>{if(document.visibilityState==='visible'&&navigator.onLine&&!flushing)loadStops()},60000);
   sb.channel('mystops')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'plan_stops',filter:'user_id=eq.'+ME},p=>{if(p.new&&p.new.assigned_by){newStopAlert(p.new);reloadSoon()}})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'plan_stops',filter:'user_id=eq.'+ME},p=>{if(p.new&&p.new.assigned_by&&!p.new.done&&!stops.some(s=>s.id===p.new.id)){newStopAlert(p.new);reloadSoon()}})
     .on('postgres_changes',{event:'DELETE',schema:'public',table:'plan_stops'},reloadSoon)
     .subscribe();
 }
@@ -307,6 +309,35 @@ async function shopTap(e,mode){
 $('shopchips').onclick=e=>shopTap(e,'add');$('rshopchips').onclick=e=>shopTap(e,'ret');
 $('shopfilter').oninput=renderShops;$('rshopfilter').oninput=renderShops;
 $('shopedit').onclick=()=>{editShops=!editShops;$('shopedit').textContent=editShops?'Done':'✎ Edit';renderShops()};
+
+/* ---------- push alerts ---------- */
+const PUSH_URL='https://yznhzcqqtufxkdkxxqmv.supabase.co/functions/v1/push';
+const urlB64=t=>{const raw=atob((t+'='.repeat((4-t.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(raw,c=>c.charCodeAt(0))};
+async function checkRole(){
+  try{const {data:u}=await sb.auth.getUser();const r=await sb.from('members').select('role').eq('user_id',u.user.id);
+    if(!r.error&&(r.data||[]).some(x=>x.role==='counter'))$('navcounter').classList.remove('hide')}catch(e){}
+}
+async function enablePush(){
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted')throw new Error('Notifications weren’t allowed.');
+  const reg=await navigator.serviceWorker.ready;
+  const k=await (await fetch(PUSH_URL+'?key=1')).json();
+  if(!k.key)throw new Error('Alerts aren’t set up on the server yet.');
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(k.key)});
+  const r=await sb.functions.invoke('push',{body:{action:'subscribe',endpoint:sub.endpoint}});
+  if(r.error||(r.data&&r.data.error)){await sub.unsubscribe();throw new Error('Couldn’t save the alert setting.')}
+  toast('Alerts are on for this device.');
+}
+async function disablePush(sub){const ep=sub.endpoint;await sub.unsubscribe();await sb.functions.invoke('push',{body:{action:'unsubscribe',endpoint:ep}});toast('Alerts are off.')}
+async function pushUI(){
+  const st=$('s-pstat'),bt=$('s-ptog'),ts=$('s-ptest');if(!st)return;
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){st.textContent='Not supported in this browser';bt.classList.add('hide');return}
+  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription(),on=!!sub;
+  st.textContent=on?'On for this device':(Notification.permission==='denied'?'Blocked in the browser settings':'Off');
+  bt.textContent=on?'Turn off':'Turn on';bt.disabled=Notification.permission==='denied'&&!on;ts.classList.toggle('hide',!on);
+  bt.onclick=async()=>{bt.disabled=true;try{on?await disablePush(sub):await enablePush()}catch(e){toast(e.message||'Couldn’t change alerts.',6000)}pushUI()};
+  ts.onclick=async()=>{const r=await sb.functions.invoke('push',{body:{action:'test'}});toast(r.error||(r.data&&r.data.error)?'Test failed.':(r.data&&r.data.sent?'Test sent. An alert should arrive in a moment.':'No device is registered yet.'),6000)};
+}
 
 /* ---------- settings + Teams ---------- */
 let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false};
@@ -371,10 +402,11 @@ function openSettings(){
   <div class="mut">Teams workflow address</div><input id="s-hook" value="${esc(SET.teams_webhook)}" placeholder="https://…logic.azure.com/…" autocomplete="off">
   ${ck('s-tl','Show a “Send to Teams” button for my To deliver list',SET.teams_list)}${ck('s-td','Post a message when I deliver, with the time',SET.teams_delivered)}${ck('s-tp','Post a message when I log a pickup',SET.teams_pickups)}${ck('s-teod','Send an end-of-day summary to Teams',SET.teams_eod)}
   <button class="g" id="s-test" style="width:100%;margin-top:6px">Send a test message</button>
-  ${sec('This phone')}<div class="mut">Google key (leave blank to keep the saved one)</div><input id="s-gkey" placeholder="${gKey()?'A key is saved on this phone':'Paste key'}" autocomplete="off">
+  ${sec('This phone')}<div class="mut">Alerts on this device</div><div class="row" style="margin-bottom:8px"><span class="mut" id="s-pstat" style="flex:1">Checking…</span><button class="g s" id="s-ptog" disabled>…</button></div><button class="g s hide" id="s-ptest" style="margin-bottom:10px">Send a test alert</button>
+  <div class="mut">Google key (leave blank to keep the saved one)</div><input id="s-gkey" placeholder="${gKey()?'A key is saved on this phone':'Paste key'}" autocomplete="off">
   </div><div class="row" style="margin-top:14px"><button id="s-save" style="flex:1">Save</button><button class="g" id="s-x">Cancel</button></div>
   <button class="g s" id="s-out" style="margin-top:12px">Sign out</button>`;
-  $('dlg').showModal();
+  $('dlg').showModal();pushUI();
   $('s-x').onclick=()=>$('dlg').close();
   $('s-save').onclick=()=>saveSettings(true);
   $('s-out').onclick=signOut;

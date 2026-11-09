@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dispatch · Delivery Log</title>
+<title>Counter · Delivery Log</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="counter.css">
@@ -12,7 +12,7 @@
 <body class="counter">
 <main class="wide">
   <div id="login" class="card narrow hide">
-    <h1 style="margin-bottom:14px">Dispatch</h1>
+    <h1 style="margin-bottom:14px">Counter</h1>
     <input id="em" type="email" placeholder="Email" autocomplete="username">
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
     <button id="loginBtn" style="width:100%">Sign in</button>
@@ -25,17 +25,15 @@
   </div>
 
   <div id="app" class="hide">
-    <div class="top"><h1>Dispatch</h1>
+    <div class="top"><h1>Counter</h1>
       <input id="day" type="date" style="width:auto;margin:0">
-      <button class="g s" id="export">Export</button>
       <button class="g s" id="print">Print</button>
-      <a class="btn" href="./" style="min-height:34px;font-size:14px;border-radius:999px;padding:0 12px">Driver view</a>
       <button class="g s" id="out">Sign out</button>
     </div>
 
     <div id="keybox" class="card hide">
       <b>Add your Google Maps key</b>
-      <p class="mut" style="margin:6px 0 10px">Needed for shop search and the map. It’s saved only in this browser.</p>
+      <p class="mut" style="margin:6px 0 10px">Needed for shop search. It’s saved only in this browser.</p>
       <input id="keyin" placeholder="Paste key here">
       <button id="keysave" style="width:100%">Save key</button>
     </div>
@@ -56,22 +54,13 @@
           <input id="cnote" placeholder="Note for the driver (optional)">
           <div class="row"><button class="g" id="cmore">+ PSI</button><button id="send" style="flex:1">Send to driver</button></div>
         </div>
-        <div class="card">
-          <b>Find a past delivery</b>
-          <div class="row" style="margin-top:12px"><input id="sq" placeholder="Shop name or PSI number" style="margin:0"><button id="sgo">Search</button></div>
-          <div id="sres" style="margin-top:8px"></div>
-        </div>
       </div>
       <div>
-        <div id="stats" class="stats"></div>
-        <div id="dchips" class="chips noprint" style="margin:0 0 14px"></div>
-        <div class="card"><div id="cmap"></div><div class="mut" id="mapnote" style="margin-top:8px"></div></div>
         <div id="boards" class="boards"></div>
       </div>
     </div>
   </div>
 </main>
-<dialog id="dlg"><div id="dlgbody"></div></dialog>
 <div class="toast" id="toast"></div>
 <script src="counter.js"></script>
 </body>

@@ -1,4 +1,4 @@
-const C = 'dl-v5';
+const C = 'dl-v8';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
 self.addEventListener('fetch', (e) => {

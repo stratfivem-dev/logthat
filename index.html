@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <main>
@@ -35,7 +35,11 @@
       <div class="card">
         <div class="row sp"><b>To deliver</b><button class="g s hide" id="sendlist">Send to Teams</button></div>
         <div id="stops" style="margin:8px 0"></div>
-        <button class="g s hide" id="clrdone">Clear delivered</button>
+        <div class="row" style="flex-wrap:wrap">
+          <button class="g s hide" id="sortnear">📍 Sort by closest</button>
+          <button class="g s hide" id="openrun">🗺 Open run in Maps</button>
+          <button class="g s hide" id="clrdone">Clear delivered</button>
+        </div>
       </div>
       <div class="card">
         <div class="row sp"><b>Quick add</b><button class="g s" id="shopedit">✎ Edit</button></div>
@@ -53,7 +57,7 @@
 
     <section id="v-ret" class="hide">
       <div class="card">
-        <b>Log a pickup</b>
+        <b>Log a return</b>
         <div class="mut" style="margin:6px 0">Shop</div>
         <input id="rshopfilter" placeholder="Filter shops" style="margin-bottom:8px">
         <div id="rshopchips" class="row" style="flex-wrap:wrap;max-height:160px;overflow:auto;margin-bottom:8px"></div>
@@ -62,7 +66,7 @@
         <div id="rsel" class="mut" style="margin:0 0 8px"></div>
         <input id="rnote" placeholder="Note (what was picked up, optional)">
         <img id="rimg" alt="" style="display:none;max-width:100%;border-radius:8px;margin-bottom:8px">
-        <div class="row"><button class="g" id="rcam">📷 Photo</button><button id="radd" style="flex:1">Log pickup</button></div>
+        <div class="row"><button class="g" id="rcam">📷 Photo</button><button id="radd" style="flex:1">Log return</button></div>
       </div>
       <div class="row sp" style="margin-bottom:8px"><span class="mut">Day</span><input class="dayin" type="date" style="width:auto;margin:0"></div>
       <div class="card"><div id="rlist"></div></div>
@@ -133,6 +137,7 @@ async function loadStops(){
     toast('Offline. Showing your saved list.');
   }else{data=r.data||[];try{localStorage.setItem('dlstops',JSON.stringify(data))}catch(e){}}
   stops=data.map(s=>{const q=queue.find(x=>x.stopId===s.id);return q?{...s,done:true,psi:q.row.psi,status:q.row.status||'delivered',reason:q.row.reason||null}:s});
+  const ids=new Set(stops.map(x=>x.id));Object.keys(drafts).forEach(k=>{if(!ids.has(k))delete drafts[k]});Object.keys(undoMap).forEach(k=>{if(!ids.has(k))delete undoMap[k]});
   renderStops();
 }
 async function loadLogs(){
@@ -175,20 +180,26 @@ async function flush(){
 
 /* ---------- run plan ---------- */
 const navUrl=s=>'https://www.google.com/maps/dir/?api=1&destination='+(s.lat!=null?s.lat+','+s.lng+(s.place_id?'&destination_place_id='+encodeURIComponent(s.place_id):''):encodeURIComponent(s.shop_name));
-const drafts={};
+let drafts={};
+try{drafts=JSON.parse(localStorage.getItem('dldrafts')||'{}')||{}}catch(e){drafts={}}
+function saveDrafts(){try{localStorage.setItem('dldrafts',JSON.stringify(drafts))}catch(e){}}
 function snapDrafts(){
   document.querySelectorAll('.sps').forEach(c=>{const id=c.dataset.id;(drafts[id]=drafts[id]||{}).psi=[...c.querySelectorAll('.sp-in')].map(i=>i.value)});
   document.querySelectorAll('.sp-note').forEach(n=>{(drafts[n.dataset.id]=drafts[n.dataset.id]||{}).note=n.value});
+  saveDrafts();
 }
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('.sp-in,.sp-note'))snapDrafts()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')snapDrafts()});
+window.addEventListener('pagehide',()=>snapDrafts());
 function renderStops(){
   snapDrafts();
   $('stops').innerHTML=stops.map((s,i)=>{
     const head=`<div class="row sp"><b>${i+1}. ${esc(s.shop_name)}</b>${s.done?'':`<span class="row"><button class="g s" data-up="${s.id}">▲</button><button class="g s" data-dn="${s.id}">▼</button><button class="g s" data-rm="${s.id}">✕</button></span>`}</div>`;
-    if(s.done)return `<div class="stop done">${head}<div class="mut">${s.status==='failed'?'Not delivered · '+esc(s.reason||''):'Delivered · '+esc(pf(s.psi))}</div></div>`;
+    if(s.done)return `<div class="stop done">${head}<div class="mut">${s.status==='failed'?'Not delivered · '+esc(s.reason||''):'Delivered · '+esc(pf(s.psi))}</div>${undoMap[s.id]?`<button class="g s" data-undo="${s.id}" style="margin-top:6px">↶ Undo</button>`:''}</div>`;
     const dp=(drafts[s.id]||{}).psi,pv=(dp&&dp.length?dp:(s.psi&&s.psi.length?s.psi:['']));
     return `<div class="stop">${head}${s.assigned_by?'<div class="mut">📥 From the counter</div>':''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="sps" data-id="${s.id}" style="margin-top:8px">${pv.map(v=>`<input class="sp-in" data-id="${s.id}" value="${esc(v)}" placeholder="PSI" inputmode="decimal">`).join('')}</div><input class="sp-note" data-id="${s.id}" value="${esc(((drafts[s.id]||{}).note??s.note)||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-add="${s.id}">+ PSI</button><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
   }).join('')||'<p class="mut">No stops yet. Tap a shop in Quick add, or search below.</p>';
-  $('clrdone').classList.toggle('hide',!stops.some(s=>s.done));renderRet();
+  $('clrdone').classList.toggle('hide',!stops.some(s=>s.done));const nTodo=stops.filter(s=>!s.done).length;$('sortnear').classList.toggle('hide',nTodo<2);$('openrun').classList.toggle('hide',nTodo<1);renderRet();
   try{localStorage.setItem('dlstops',JSON.stringify(stops))}catch(e){}
 }
 async function commitStop(s,part,msg){
@@ -203,9 +214,30 @@ async function commitStop(s,part,msg){
     else{toast(err.message||'Could not save it.');return false}
   }
   s.done=true;s.status=row.status;s.reason=row.reason;s.psi=row.psi;delete drafts[s.id];delete pend[s.id];
+  undoMap[s.id]={id:row.id,note:row.note||null};saveUndo();
   day=dstr(Date.now());document.querySelectorAll('.dayin').forEach(x=>x.value=day);
   renderStops();loadLogs();return true;
 }
+let undoMap={};
+try{undoMap=JSON.parse(localStorage.getItem('dlundo')||'{}')||{}}catch(e){undoMap={}}
+function saveUndo(){try{localStorage.setItem('dlundo',JSON.stringify(undoMap))}catch(e){}}
+async function undoStop(id,b){
+  const s=stops.find(x=>x.id===id),u=undoMap[id];if(!s||!u)return;
+  b.disabled=true;
+  const q=queue.find(x=>x.stopId===id);
+  if(q){queue=queue.filter(x=>x!==q);saveQ()}
+  else{
+    const r=await sb.from('deliveries').delete().eq('id',u.id);
+    if(r.error){b.disabled=false;return toast(isNet(r.error)?'No signal. Try Undo again when you’re online.':r.error.message)}
+    const r2=await sb.from('plan_stops').update({done:false,status:null,reason:null}).eq('id',id);
+    if(r2.error)await sb.from('plan_stops').update({done:false}).eq('id',id);
+  }
+  s.done=false;s.status=null;s.reason=null;
+  drafts[id]={psi:(s.psi||[]).map(String),note:u.note||''};
+  delete undoMap[id];saveUndo();
+  renderStops();loadLogs();toast('Undone. '+s.shop_name+' is back on the list.');
+}
+const dist=(a,b)=>{const R=6371,p=Math.PI/180,x=(b.lng-a.lng)*p*Math.cos((a.lat+b.lat)*p/2),y=(b.lat-a.lat)*p;return R*Math.sqrt(x*x+y*y)};
 const REASONS=['Shop closed','No one there','Refused','Not needed','Come back later'];
 function openFail(id){
   const s=stops.find(x=>x.id===id);if(!s)return;
@@ -223,6 +255,7 @@ function openFail(id){
 }
 $('stops').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.undo)return undoStop(b.dataset.undo,b);
   const id=b.dataset.ok||b.dataset.fail||b.dataset.add||b.dataset.cam||b.dataset.up||b.dataset.dn||b.dataset.rm,i=stops.findIndex(s=>s.id===id);
   if(b.dataset.cam){scan(document.querySelector(`.sps[data-id="${id}"]`),'sp-in',id,b)}
   else if(b.dataset.add){const c=document.querySelector(`.sps[data-id="${id}"]`);addField(c,'sp-in').dataset.id=id;c.lastChild.focus()}
@@ -244,7 +277,30 @@ $('stops').onclick=async e=>{
     if(confirm('Remove this stop?')){stops.splice(i,1);renderStops();sb.from('plan_stops').delete().eq('id',id).then(()=>{})}
   }
 };
-$('clrdone').onclick=()=>{stops=stops.filter(s=>!s.done);renderStops();sb.from('plan_stops').delete().eq('done',true).then(()=>{})};
+$('sortnear').onclick=()=>{
+  if(!navigator.geolocation)return toast('This phone won’t share its location.');
+  const b=$('sortnear');b.disabled=true;toast('Finding where you are…');
+  navigator.geolocation.getCurrentPosition(p=>{
+    b.disabled=false;
+    let here={lat:p.coords.latitude,lng:p.coords.longitude};
+    const done=stops.filter(s=>s.done),todo=stops.filter(s=>!s.done),pin=todo.filter(s=>s.lat!=null&&s.lng!=null),nopin=todo.filter(s=>s.lat==null||s.lng==null),out=[];
+    if(pin.length<2)return toast('Need at least two stops with a map pin to sort.');
+    while(pin.length){let k=0;for(let i=1;i<pin.length;i++)if(dist(here,pin[i])<dist(here,pin[k]))k=i;here=pin[k];out.push(pin.splice(k,1)[0])}
+    stops=[...done,...out,...nopin];renderStops();
+    Promise.all(stops.map((s,k)=>sb.from('plan_stops').update({sort_order:k}).eq('id',s.id))).catch(()=>{});
+    toast('Sorted, closest first.'+(nopin.length?' '+nopin.length+' without a map pin left at the end.':''));
+  },()=>{b.disabled=false;toast('Couldn’t get your location. Check location is allowed for this site.')},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+};
+$('openrun').onclick=()=>{
+  const todo=stops.filter(s=>!s.done);if(!todo.length)return;
+  const MAX=10,run=todo.slice(0,MAX),pt=s=>s.lat!=null&&s.lng!=null?s.lat+','+s.lng:s.shop_name+(s.address?', '+s.address:''),last=run[run.length-1];
+  let u='https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(pt(last));
+  if(last.place_id&&last.lat!=null)u+='&destination_place_id='+encodeURIComponent(last.place_id);
+  if(run.length>1)u+='&waypoints='+encodeURIComponent(run.slice(0,-1).map(pt).join('|'));
+  if(todo.length>MAX)toast('Google Maps takes 10 stops at a time. Opening the first 10.',7000);
+  window.open(u,'_blank','noopener');
+};
+$('clrdone').onclick=()=>{stops.filter(s=>s.done).forEach(s=>delete undoMap[s.id]);saveUndo();stops=stops.filter(s=>!s.done);renderStops();sb.from('plan_stops').delete().eq('done',true).then(()=>{})};
 $('pmore').onclick=()=>addField($('ppsis'),'pp').focus();
 $('padd').onclick=async()=>{
   const name=((picked&&picked.name)||(G.ac?G.ac.value:($('plainshop')||{}).value)||'').trim();
@@ -386,7 +442,7 @@ function openSettings(){
    ${row('Workflow address','',`<input class="sin" id="s-hook" value="${esc(SET.teams_webhook)}" placeholder="https://…logic.azure.com/…" autocomplete="off">`,'s-ton')}
    ${row('To deliver list','Adds a Send to Teams button',sw('s-tl',SET.teams_list),'s-ton')}
    ${row('Each delivery','Posted with the time and run progress',sw('s-td',SET.teams_delivered),'s-ton')}
-   ${row('Each pickup','',sw('s-tp',SET.teams_pickups),'s-ton')}
+   ${row('Each return','',sw('s-tp',SET.teams_pickups),'s-ton')}
    ${row('End-of-day summary','',sw('s-teod',SET.teams_eod),'s-ton')}
    <div class="srow" data-for="s-ton"><button class="g s" id="s-test">Send a test message</button></div>
   </div>
@@ -421,7 +477,7 @@ async function searchAll(){
   if(d.error)return toast(isNet(d.error)?'No signal. Try again when you’re back online.':d.error.message);
   const dt=t=>new Date(t).toLocaleDateString([],{weekday:'short',day:'numeric',month:'short'})+' '+fmt(t);
   const rows=[...(d.data||[]).map(l=>({t:l.delivered_at,h:`<b>${esc(l.shop_name)}</b><br><span class="mut">${l.status==='failed'?'Not delivered · '+esc(l.reason||''):esc(pf(l.psi))}${l.note?' · '+esc(l.note):''}</span>`})),
-    ...(p.data||[]).map(l=>({t:l.picked_at,h:`↩ <b>${esc(l.shop_name)}</b><br><span class="mut">Pickup${l.note?' · '+esc(l.note):''}</span>`}))].sort((a,b)=>new Date(b.t)-new Date(a.t));
+    ...(p.data||[]).map(l=>({t:l.picked_at,h:`↩ <b>${esc(l.shop_name)}</b><br><span class="mut">Return${l.note?' · '+esc(l.note):''}</span>`}))].sort((a,b)=>new Date(b.t)-new Date(a.t));
   $('lsres').innerHTML='<div class="card"><div class="row sp"><b>Results</b><button class="g s" id="lsclr">Clear</button></div>'+(rows.map(r=>`<div class="del"><span>${dt(r.t)}<br>${r.h}</span><button class="g s" data-open="${dstr(r.t)}">Open day</button></div>`).join('')||'<p class="mut">No matches.</p>')+'</div>';
   $('lsclr').onclick=()=>{$('lsres').innerHTML='';$('lsq').value=''};
 }
@@ -442,8 +498,8 @@ async function dupCheck(psi){
 
 /* ---------- log, edit, export, email ---------- */
 function renderLog(){
-  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${esc(g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Pickup${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
-  $('tot').textContent=logs.length+' deliver'+(logs.length==1?'y':'ies')+(pickups.length?' · '+pickups.length+' pickup'+(pickups.length>1?'s':''):'');
+  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${esc(g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Return${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
+  $('tot').textContent=logs.length+' deliver'+(logs.length==1?'y':'ies')+(pickups.length?' · '+pickups.length+' return'+(pickups.length>1?'s':''):'');
 }
 $('loglist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.e)openEdit(b.dataset.e);else if(b&&b.dataset.pk)openPickup(b.dataset.pk)};
 async function openEdit(id){
@@ -547,7 +603,7 @@ function renderMap(){
   const gs=groups().filter(g=>g.lat!=null),bounds=new google.maps.LatLngBounds();
   gs.forEach(g=>{
     const pos={lat:g.lat,lng:g.lng},m=new G.marker.AdvancedMarkerElement({map,position:pos,title:g.name});
-    m.addListener('click',()=>{iw.setContent(`<div class="iw"><b>${esc(g.name)}</b><br>${esc(g.address||'')}<hr>${g.items.map(l=>`${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?' · '+esc(l.note):''}`).join('<br>')}${g.picks.map(p=>`<br>↩ ${fmt(p.picked_at)} Pickup${p.note?' · '+esc(p.note):''}`).join('')}</div>`);iw.open({map,anchor:m})});
+    m.addListener('click',()=>{iw.setContent(`<div class="iw"><b>${esc(g.name)}</b><br>${esc(g.address||'')}<hr>${g.items.map(l=>`${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?' · '+esc(l.note):''}`).join('<br>')}${g.picks.map(p=>`<br>↩ ${fmt(p.picked_at)} Return${p.note?' · '+esc(p.note):''}`).join('')}</div>`);iw.open({map,anchor:m})});
     mk.push(m);bounds.extend(pos);
   });
   if(gs.length>1)map.fitBounds(bounds,60);else if(gs.length){map.setCenter(bounds.getCenter());map.setZoom(16)}
@@ -575,7 +631,7 @@ function renderRet(){
   if($('rclr'))$('rclr').onclick=()=>{pickedR=null;renderRet()};
 }
 function renderPickups(){
-  $('rlist').innerHTML=pickups.map(p=>`<div class="stop"><div class="row sp"><span><b>↩ ${esc(p.shop_name)}</b> <span class="mut">${fmt(p.picked_at)}${p.photo_path?' 📎':''}</span>${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div></div>`).join('')||'<p class="mut">No pickups for this day.</p>';
+  $('rlist').innerHTML=pickups.map(p=>`<div class="stop"><div class="row sp"><span><b>↩ ${esc(p.shop_name)}</b> <span class="mut">${fmt(p.picked_at)}${p.photo_path?' 📎':''}</span>${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div></div>`).join('')||'<p class="mut">No returns for this day.</p>';
 }
 $('rlist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.pk)openPickup(b.dataset.pk)};
 $('rcam').onclick=()=>pickPhoto(du=>{rPhoto=du;$('rimg').src=du;$('rimg').style.display='block'});
@@ -587,7 +643,7 @@ $('radd').onclick=async()=>{
   $('radd').disabled=true;
   try{
     if(!navigator.onLine)throw new Error('offline');
-    await pushDelivery(it);toast('Pickup logged for '+name);saveShop({name,place_id:it.row.place_id,address:it.row.address,lat:it.row.lat,lng:it.row.lng});
+    await pushDelivery(it);toast('Return logged for '+name);saveShop({name,place_id:it.row.place_id,address:it.row.address,lat:it.row.lat,lng:it.row.lng});
   }catch(err){
     if(isNet(err)){queue.push(it);saveQ();toast('No signal. Saved on your phone and will send when you’re back online.',7000)}
     else{$('radd').disabled=false;return toast(err.message||'Could not log it.')}
@@ -598,11 +654,11 @@ $('radd').onclick=async()=>{
 };
 async function openPickup(id){
   const p=pickups.find(x=>x.id===id);if(!p)return;$('dlgbody').onclick=null;
-  $('dlgbody').innerHTML=`<b>↩ Pickup · ${esc(p.shop_name)}</b><div class="mut" style="margin:4px 0 10px">${fmt(p.picked_at)}</div><input id="p-note" value="${esc(p.note||'')}" placeholder="Note"><img id="p-img" alt="Photo" style="max-width:100%;border-radius:8px;display:none;margin-bottom:8px"><div class="row"><button id="p-save" style="flex:1">Save note</button><button class="g" id="p-del">Delete</button><button class="g" id="p-x">Close</button></div>`;
+  $('dlgbody').innerHTML=`<b>↩ Return · ${esc(p.shop_name)}</b><div class="mut" style="margin:4px 0 10px">${fmt(p.picked_at)}</div><input id="p-note" value="${esc(p.note||'')}" placeholder="Note"><img id="p-img" alt="Photo" style="max-width:100%;border-radius:8px;display:none;margin-bottom:8px"><div class="row"><button id="p-save" style="flex:1">Save note</button><button class="g" id="p-del">Delete</button><button class="g" id="p-x">Close</button></div>`;
   $('dlg').showModal();
   $('p-x').onclick=()=>$('dlg').close();
   $('p-save').onclick=async()=>{const r=await sb.from('pickups').update({note:$('p-note').value.trim()||null}).eq('id',id);if(r.error)return toast(r.error.message);$('dlg').close();loadLogs()};
-  $('p-del').onclick=async()=>{if(!confirm('Delete this pickup?'))return;if(p.photo_path)await sb.storage.from('invoices').remove([p.photo_path]);const r=await sb.from('pickups').delete().eq('id',id);if(r.error)return toast(r.error.message);$('dlg').close();loadLogs()};
+  $('p-del').onclick=async()=>{if(!confirm('Delete this return?'))return;if(p.photo_path)await sb.storage.from('invoices').remove([p.photo_path]);const r=await sb.from('pickups').delete().eq('id',id);if(r.error)return toast(r.error.message);$('dlg').close();loadLogs()};
   if(p.photo_path){const r=await sb.storage.from('invoices').createSignedUrl(p.photo_path,3600);if(r.data&&$('p-img')){$('p-img').src=r.data.signedUrl;$('p-img').style.display='block'}}
 }
 

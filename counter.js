@@ -64,7 +64,7 @@ async function loadBoard() {
     return `<div class="card"><div class="row sp"><b style="font-size:17px">${esc(m.display_name || 'Driver')}</b><span class="mut">${ds.length} of ${total} done</span></div><div class="bar"><i style="width:${pct}%"></i></div>`
       + (ps.length ? `<div class="sec">Still to deliver</div>` + ps.map((x) => `<div class="ln"><span>${esc(x.shop_name)}<br><span class="mut">${esc(pf(x.psi))}${x.note ? ' · ' + esc(x.note) : ''}</span></span><span class="row"><button class="g s" data-ed="${x.id}">Edit</button><button class="g s" data-rm="${x.id}">Remove</button></span></div>`).join('') : '')
       + (ds.length ? `<div class="sec">Done</div>` + ds.map((l) => `<div class="ln"><span>${fmt(l.delivered_at)} · ${esc(l.shop_name)}<br>${l.status === 'failed' ? `<span class="bad">Not delivered · ${esc(l.reason || '')}</span>` : `<span class="mut">${esc(pf(l.psi))}${l.note ? ' · ' + esc(l.note) : ''}</span>`}</span></div>`).join('') : '')
-      + (pk.length ? `<div class="sec">Pickups</div>` + pk.map((x) => `<div class="ln"><span>↩ ${fmt(x.picked_at)} · ${esc(x.shop_name)}${x.note ? '<br><span class="mut">' + esc(x.note) + '</span>' : ''}</span></div>`).join('') : '')
+      + (pk.length ? `<div class="sec">Returns</div>` + pk.map((x) => `<div class="ln"><span>↩ ${fmt(x.picked_at)} · ${esc(x.shop_name)}${x.note ? '<br><span class="mut">' + esc(x.note) + '</span>' : ''}</span></div>`).join('') : '')
       + (!ps.length && !ds.length && !pk.length ? '<p class="mut">Nothing yet.</p>' : '') + '</div>';
   }).join('') || '<p class="mut">No drivers in this team yet.</p>';
 }

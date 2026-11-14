@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <main>
@@ -163,7 +163,6 @@ async function uploadPhoto(du){
 async function pushDelivery(it){
   if(it.kind==='pickup'){const pr={...it.row};if(it.photo){const pp=await uploadPhoto(it.photo);if(pp)pr.photo_path=pp}const r=await sb.from('pickups').upsert(pr,{onConflict:'id'});if(r.error)throw r.error;await teamsPing('pickup',pr);return}
   const row={...it.row};
-  if(it.photo){const p=await uploadPhoto(it.photo);if(p)row.invoice_path=p}
   const ins=await sb.from('deliveries').upsert(row,{onConflict:'id'});if(ins.error)throw ins.error;
   if(it.stopId)await sb.from('plan_stops').update({done:true,psi:row.psi,status:row.status||'delivered',reason:row.reason||null}).eq('id',it.stopId);
   await teamsPing(row.status==='failed'?'failed':'delivered',row,it.progress);
@@ -234,7 +233,7 @@ $('stops').onclick=async e=>{
     b.disabled=true;
     const dup=await dupCheck(psi);
     if(dup&&!confirm('PSI-'+dup.n+' was already logged today for '+dup.l.shop_name+' at '+fmt(dup.l.delivered_at)+'. Log it again?')){b.disabled=false;return}
-    const ok=await commitStop(s,{photo:pend[id]||null,row:{psi,note:(nt&&nt.value.trim())||null}},'Logged '+s.shop_name+' · '+pf(psi));
+    const ok=await commitStop(s,{photo:null,row:{psi,note:(nt&&nt.value.trim())||null}},'Logged '+s.shop_name+' · '+pf(psi));
     if(!ok)b.disabled=false;
   }else if(b.dataset.up||b.dataset.dn){
     const j=b.dataset.up?i-1:i+1;if(j<0||j>=stops.length)return;
@@ -443,17 +442,16 @@ async function dupCheck(psi){
 
 /* ---------- log, edit, export, email ---------- */
 function renderLog(){
-  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${esc(g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.invoice_path?' 📎':''}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Pickup${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
+  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${esc(g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Pickup${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
   $('tot').textContent=logs.length+' deliver'+(logs.length==1?'y':'ies')+(pickups.length?' · '+pickups.length+' pickup'+(pickups.length>1?'s':''):'');
 }
 $('loglist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.e)openEdit(b.dataset.e);else if(b&&b.dataset.pk)openPickup(b.dataset.pk)};
 async function openEdit(id){
   const l=logs.find(x=>x.id===id);if(!l)return;cur={photo:null};$('dlgbody').onclick=null;
   const d=new Date(l.delivered_at),hh=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  $('dlgbody').innerHTML=`<b>Edit delivery</b><div style="margin:10px 0"><input id="e-shop" value="${esc(l.shop_name)}" placeholder="Shop"><input id="e-psi" value="${esc((l.psi||[]).join(', '))}" placeholder="PSI, separated by commas (blank if none)" inputmode="decimal"><input id="e-time" type="time" value="${hh}"><input id="e-note" value="${esc(l.note||'')}" placeholder="Note"><img id="e-img" alt="Invoice" style="max-width:100%;border-radius:8px;display:none;margin-bottom:8px"><button class="g" id="e-photo" style="width:100%">📷 ${l.invoice_path?'Replace':'Add'} invoice photo</button></div><div class="row"><button id="e-save" style="flex:1">Save</button><button class="g" id="e-del">Delete</button><button class="g" id="e-x">Cancel</button></div>`;
+  $('dlgbody').innerHTML=`<b>Edit delivery</b><div style="margin:10px 0"><input id="e-shop" value="${esc(l.shop_name)}" placeholder="Shop"><input id="e-psi" value="${esc((l.psi||[]).join(', '))}" placeholder="PSI, separated by commas (blank if none)" inputmode="decimal"><input id="e-time" type="time" value="${hh}"><input id="e-note" value="${esc(l.note||'')}" placeholder="Note"></div><div class="row"><button id="e-save" style="flex:1">Save</button><button class="g" id="e-del">Delete</button><button class="g" id="e-x">Cancel</button></div>`;
   $('dlg').showModal();
   $('e-x').onclick=()=>$('dlg').close();
-  $('e-photo').onclick=()=>pickPhoto(du=>{cur.photo=du;const im=$('e-img');im.src=du;im.style.display='block';$('e-photo').textContent='Photo ready. Tap Save.'});
   $('e-del').onclick=async()=>{
     if(!confirm('Delete this delivery?'))return;
     if(l.invoice_path)await sb.storage.from('invoices').remove([l.invoice_path]);
@@ -465,11 +463,9 @@ async function openEdit(id){
     if(!shop)return toast('A shop name is needed.');
     const [h,m]=($('e-time').value||hh).split(':').map(Number),nd=new Date(l.delivered_at);nd.setHours(h,m);
     const upd={shop_name:shop,psi,note:$('e-note').value.trim()||null,delivered_at:nd.toISOString()};
-    if(cur.photo){const p=await uploadPhoto(cur.photo);if(p){if(l.invoice_path)await sb.storage.from('invoices').remove([l.invoice_path]);upd.invoice_path=p}else toast('Photo upload failed. Saved the rest.')}
     const r=await sb.from('deliveries').update(upd).eq('id',l.id);if(r.error)return toast(r.error.message);
     $('dlg').close();loadLogs();
   };
-  if(l.invoice_path){const r=await sb.storage.from('invoices').createSignedUrl(l.invoice_path,3600);if(r.data&&$('e-img')){const im=$('e-img');im.src=r.data.signedUrl;im.style.display='block'}}
 }
 $('exp').onclick=()=>{
   $('dlgbody').onclick=null;
@@ -532,13 +528,12 @@ function scan(c,cls,id,btn){
     const old=btn.textContent;btn.textContent='Reading…';btn.disabled=true;
     try{
       const b64=(await shrink(f,1800,.85)).split(',')[1];
-      if(id)pend[id]=await shrink(f,1000,.55);
       const r=await fetch('https://vision.googleapis.com/v1/images:annotate?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requests:[{image:{content:b64},features:[{type:'DOCUMENT_TEXT_DETECTION'}]}]})});
       const j=await r.json();if(j.error)throw new Error(j.error.message);
       const e=j.responses&&j.responses[0];if(e&&e.error)throw new Error(e.error.message);
       const text=(e&&e.fullTextAnnotation&&e.fullTextAnnotation.text)||'';
       const found=[...new Set([...text.matchAll(/P[S5][I1l|]\s*[:#\-\u2010-\u2015]?\s*([0-9OoIl]{3,})/gi)].map(m=>m[1].replace(/[Oo]/g,'0').replace(/[Il]/g,'1')))];
-      found.length?(fillFields(c,cls,id,found),toast('Read '+found.join(', ')+'. Check before logging.'+(id?' Invoice photo will be saved.':''),8000)):toast('No PSI number found. Try a closer, flatter photo.');
+      found.length?(fillFields(c,cls,id,found),toast('Read '+found.join(', ')+'. Check before logging.',8000)):toast('No PSI number found. Try a closer, flatter photo.');
     }catch(err){toast(isNet(err)?'No signal. Type the PSI instead.':'Scan failed: '+err.message,10000)}
     btn.textContent=old;btn.disabled=false;
   };

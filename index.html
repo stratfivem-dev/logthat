@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <main>
@@ -22,7 +22,7 @@
   </div>
 
   <div id="app" class="hide">
-    <div class="top"><h1>Delivery Log</h1><span class="mut" id="pend"></span><button class="g s" id="setbtn">Settings</button></div>
+    <div class="top"><h1>Delivery Log</h1><span class="mut" id="pend"></span><button class="g s" id="notesbtn">📝 Notes</button><button class="g s" id="setbtn">Settings</button></div>
 
     <div id="keybox" class="card hide">
       <b>Add your Google Maps key</b>
@@ -50,8 +50,8 @@
         <b>Add a stop</b>
         <div id="searchbox"><input id="plainshop" placeholder="Shop name"></div>
         <label id="mechrow" class="mut hide" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="mechonly" checked style="width:auto;margin:0"> Car businesses only (faster)</label>
-        <div id="ppsis"><input class="pp" placeholder="PSI" inputmode="decimal"></div>
-        <div class="row"><button class="g" id="pmore">+ PSI</button><button class="g" id="pcam">📷</button><button id="padd" style="flex:1">Add stop</button></div>
+        <div id="ppsis"><input class="pp" placeholder="PSI · put a dot between several" inputmode="decimal"><div class="chips"></div></div>
+        <div class="row"><button class="g" id="pcam">📷 Scan</button><button id="padd" style="flex:1">Add stop</button></div>
       </div>
     </section>
 
@@ -72,6 +72,36 @@
       <div class="card"><div id="rlist"></div></div>
     </section>
 
+    <section id="v-stock" class="hide">
+      <div class="card">
+        <b>Workshop stock</b>
+        <p class="mut hide" id="sterr" style="margin:8px 0"></p>
+        <input id="stfilter" placeholder="Filter shops" style="margin:8px 0">
+        <div id="stshops" class="row" style="flex-wrap:wrap;max-height:220px;overflow:auto"></div>
+      </div>
+      <div class="card hide" id="stcard">
+        <div class="row sp"><b id="stname" style="font-size:17px"></b><button class="g s" id="stclose">✕</button></div>
+        <div id="stneed" style="margin:8px 0"></div>
+        <div id="stitems"></div>
+        <div style="margin-top:12px">
+          <input id="stnew" placeholder="Add an item (e.g. Oil filter Z418)">
+          <div class="row"><input id="sttgt" type="number" inputmode="numeric" min="0" placeholder="Should have" style="margin:0"><input id="sthave" type="number" inputmode="numeric" min="0" placeholder="Has now" style="margin:0"><button id="stadd">Add</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="v-notes" class="hide">
+      <div class="card" id="nlistcard">
+        <div class="row sp"><b>Notes</b><button class="s" id="nnew">+ New note</button></div>
+        <div id="nlist" style="margin-top:8px"></div>
+      </div>
+      <div class="card hide" id="ned">
+        <div class="row sp" style="margin-bottom:10px"><button class="g s" id="nback">← Notes</button><span class="mut" id="nstat"></span><button class="g s" id="ndel">Delete</button></div>
+        <input id="ntitle" placeholder="Title">
+        <textarea id="nbody" placeholder="Write anything…"></textarea>
+      </div>
+    </section>
+
     <section id="v-map" class="hide">
       <div class="row sp" style="margin-bottom:8px"><span class="mut">Day</span><input class="dayin" type="date" style="width:auto;margin:0"></div>
       <div id="map"></div>
@@ -83,13 +113,13 @@
       <div id="lsres"></div>
       <div class="row sp" style="margin-bottom:8px"><span class="mut">Day</span><input class="dayin" type="date" style="width:auto;margin:0"></div>
       <div class="card"><div id="loglist"></div>
-        <div class="row sp" style="margin-top:10px"><span class="mut" id="tot"></span><span class="row"><button id="exp" class="g">⬇ Export</button><button id="tsum" class="g hide">Teams</button><button id="mail" class="g">✉️ Email</button></span></div>
+        <div id="kmline" class="mut" style="margin-top:10px"></div><div class="row sp" style="margin-top:10px"><span class="mut" id="tot"></span><span class="row"><button id="exp" class="g">⬇ Export</button><button id="tsum" class="g hide">Teams</button><button id="mail" class="g">✉️ Email</button></span></div>
       </div>
     </section>
   </div>
 </main>
 
-<div class="nav hide" id="nav"><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button></div>
+<div class="nav hide" id="nav"><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="stock"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2"/><path d="M9 12h6M9 16h4"/></svg><span>Stock</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button></div>
 <dialog id="dlg"><div id="dlgbody"></div></dialog>
 <div class="toast" id="toast"></div>
 
@@ -107,21 +137,39 @@ const pf=a=>a&&a.length?a.map(n=>'PSI-'+n).join(', '):'No PSI';
 const isNet=e=>!navigator.onLine||/fetch|network|load failed|timeout|offline/i.test(String(e&&e.message||e));
 let pickups=[],pickedR=null,rPhoto=null,stops=[],logs=[],picked=null,G={},map=null,mk=[],iw=null,tab='run',day=dstr(Date.now()),pend={},queue=[],flushing=false,cur=null;
 try{queue=JSON.parse(localStorage.getItem('dlq')||'[]')}catch(e){}
+G.ready=new Promise(res=>{G._rd=res});
 const updPend=()=>{$('pend').textContent=queue.length?'⏳ '+queue.length+' waiting':''};
 const saveQ=()=>{try{localStorage.setItem('dlq',JSON.stringify(queue))}catch(e){}updPend()};
 
 function toast(t,ms=4500){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',ms)}
-const nums=sel=>[...document.querySelectorAll(sel)].map(i=>parseFloat(i.value)).filter(n=>!isNaN(n));
+// Several PSI in one box: 333211.333212 (or spaces/commas). A short entry like .12 borrows the start of the one before: 3364700.12 -> 3364700, 3364712
+function parsePsi(str){
+  const out=[];let prev='';
+  String(str||'').replace(/psi/gi,' ').split(/[^0-9]+/).filter(Boolean).forEach(t=>{
+    let v=t;if(t.length<=3&&prev.length>t.length+1)v=prev.slice(0,prev.length-t.length)+t;
+    const n=Number(v);if(!out.includes(n))out.push(n);if(v.length>3)prev=v;
+  });
+  return out;
+}
+const nums=sel=>{const o=[];document.querySelectorAll(sel).forEach(i=>parsePsi(i.value).forEach(n=>{if(!o.includes(n))o.push(n)}));return o};
+const chipHtml=v=>parsePsi(v).map((n,k)=>`<span class="chip">PSI-${n}<button type="button" data-chipx="${k}" aria-label="Remove PSI-${n}">✕</button></span>`).join('');
+function chipsFor(inp){const c=inp&&inp.nextElementSibling;if(c&&c.classList.contains('chips'))c.innerHTML=chipHtml(inp.value)}
+document.addEventListener('input',e=>{if(e.target.matches&&e.target.matches('.sp-in,.pp'))chipsFor(e.target)});
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-chipx]');if(!b)return;
+  const c=b.closest('.chips'),inp=c&&c.previousElementSibling;if(!inp)return;
+  const a=parsePsi(inp.value);a.splice(Number(b.dataset.chipx),1);inp.value=a.join('.');chipsFor(inp);snapDrafts();
+});
 function addField(c,cls,v){const i=document.createElement('input');i.className=cls;i.placeholder='PSI';i.inputMode='decimal';if(v!=null)i.value=v;c.appendChild(i);return i}
 
 /* ---------- auth ---------- */
 async function boot(){const {data}=await sb.auth.getSession();data.session?start():$('login').classList.remove('hide')}
 $('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)toast(error.message);else{$('login').classList.add('hide');start()}};
 async function start(){
-  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();listen();
+  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();listen();loadStock();loadNotes();
   document.querySelectorAll('.dayin').forEach(i=>{i.value=day;i.onchange=()=>{day=i.value;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs()}});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-  window.addEventListener('online',flush);setInterval(flush,30000);
+  window.addEventListener('online',()=>{flush();syncNotes()});setInterval(flush,30000);
   await flush();await Promise.all([loadStops(),loadLogs()]);
   setupMaps();
 }
@@ -144,7 +192,7 @@ async function loadLogs(){
   const a=new Date(day+'T00:00:00'),b=new Date(a.getTime()+864e5);
   const {data,error}=await sb.from('deliveries').select('*').gte('delivered_at',a.toISOString()).lt('delivered_at',b.toISOString()).order('delivered_at');
   if(error){if(!isNet(error))toast(error.message);return}
-  logs=data||[];await loadPickups(a,b);renderLog();renderPickups();renderMap();
+  logs=data||[];await loadPickups(a,b);renderLog();renderPickups();renderMap();updKm();
 }
 function groups(){
   const g={},add=(x,k)=>(g[k]=g[k]||{name:x.shop_name,address:x.address,lat:x.lat,lng:x.lng,items:[],picks:[]});
@@ -157,16 +205,35 @@ function groups(){
 function shrink(f,max,q){return new Promise((res,rej)=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);res(c.toDataURL('image/jpeg',q))};im.onerror=rej;im.src=u})}
 function pickPhoto(cb){
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.setAttribute('capture','environment');inp.style.display='none';document.body.appendChild(inp);
-  inp.onchange=async()=>{const f=inp.files[0];inp.remove();if(f)cb(await shrink(f,1000,.55))};inp.click();
+  inp.onchange=async()=>{
+    const f=inp.files[0];inp.remove();if(!f)return;
+    let du=null;
+    try{du=await shrink(f,1280,.62)}catch(e){
+      try{du=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(f)})}catch(x){}
+    }
+    if(!du)return toast('Couldn’t open that photo. Try taking it again.',7000);
+    cb(du);
+  };inp.click();
 }
 async function uploadPhoto(du){
-  const {data:u}=await sb.auth.getUser();if(!u.user)return null;
+  const {data:u,error:ue}=await sb.auth.getUser();
+  if(ue||!u||!u.user)return {error:ue||{message:'Not signed in'}};
   const path=u.user.id+'/'+Date.now()+'.jpg',blob=await (await fetch(du)).blob();
-  const r=await sb.storage.from('invoices').upload(path,blob,{contentType:'image/jpeg'});
-  return r.error?null:path;
+  const r=await sb.storage.from('invoices').upload(path,blob,{contentType:blob.type||'image/jpeg'});
+  return r.error?{error:r.error}:{path};
 }
 async function pushDelivery(it){
-  if(it.kind==='pickup'){const pr={...it.row};if(it.photo){const pp=await uploadPhoto(it.photo);if(pp)pr.photo_path=pp}const r=await sb.from('pickups').upsert(pr,{onConflict:'id'});if(r.error)throw r.error;await teamsPing('pickup',pr);return}
+  if(it.kind==='pickup'){
+    const pr={...it.row};it.photoErr=null;
+    if(it.photo){
+      const up=await uploadPhoto(it.photo);
+      if(up.path)pr.photo_path=up.path;
+      else if(isNet(up.error))throw up.error;
+      else it.photoErr=(up.error&&up.error.message)||'unknown error';
+    }
+    const r=await sb.from('pickups').upsert(pr,{onConflict:'id'});if(r.error)throw r.error;
+    await teamsPing('pickup',pr);return;
+  }
   const row={...it.row};
   const ins=await sb.from('deliveries').upsert(row,{onConflict:'id'});if(ins.error)throw ins.error;
   if(it.stopId)await sb.from('plan_stops').update({done:true,psi:row.psi,status:row.status||'delivered',reason:row.reason||null}).eq('id',it.stopId);
@@ -174,7 +241,9 @@ async function pushDelivery(it){
 }
 async function flush(){
   if(!queue.length||flushing||!navigator.onLine)return;flushing=true;let n=0;
-  for(const it of [...queue]){try{await pushDelivery(it);queue=queue.filter(x=>x!==it);saveQ();n++}catch(e){break}}
+  let pe=null;
+  for(const it of [...queue]){try{await pushDelivery(it);if(it.photoErr)pe=it.photoErr;queue=queue.filter(x=>x!==it);saveQ();n++}catch(e){break}}
+  if(pe)setTimeout(()=>toast('A saved return was sent, but its photo didn’t save: '+pe,10000),4600);
   flushing=false;if(n){toast('Sent '+n+' saved deliver'+(n>1?'ies':'y')+'.');loadStops();loadLogs()}
 }
 
@@ -196,8 +265,8 @@ function renderStops(){
   $('stops').innerHTML=stops.map((s,i)=>{
     const head=`<div class="row sp"><b>${i+1}. ${esc(s.shop_name)}</b>${s.done?'':`<span class="row"><button class="g s" data-up="${s.id}">▲</button><button class="g s" data-dn="${s.id}">▼</button><button class="g s" data-rm="${s.id}">✕</button></span>`}</div>`;
     if(s.done)return `<div class="stop done">${head}<div class="mut">${s.status==='failed'?'Not delivered · '+esc(s.reason||''):'Delivered · '+esc(pf(s.psi))}</div>${undoMap[s.id]?`<button class="g s" data-undo="${s.id}" style="margin-top:6px">↶ Undo</button>`:''}</div>`;
-    const dp=(drafts[s.id]||{}).psi,pv=(dp&&dp.length?dp:(s.psi&&s.psi.length?s.psi:['']));
-    return `<div class="stop">${head}${s.assigned_by?'<div class="mut">📥 From the counter</div>':''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="sps" data-id="${s.id}" style="margin-top:8px">${pv.map(v=>`<input class="sp-in" data-id="${s.id}" value="${esc(v)}" placeholder="PSI" inputmode="decimal">`).join('')}</div><input class="sp-note" data-id="${s.id}" value="${esc(((drafts[s.id]||{}).note??s.note)||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-add="${s.id}">+ PSI</button><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
+    const dp=(drafts[s.id]||{}).psi,pv=(dp&&dp.length?dp.filter(Boolean).join('.'):(s.psi||[]).join('.')),low=lowOf(shopKey(s));
+    return `<div class="stop">${head}${s.assigned_by?'<div class="mut">📥 From the counter</div>':''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}${low.length?`<button class="g s warn" data-stock="${esc(shopKey(s))}" style="margin-top:6px">🔧 ${low.length} low on stock</button>`:''}<div class="sps" data-id="${s.id}"><input class="sp-in" data-id="${s.id}" value="${esc(pv)}" placeholder="PSI · put a dot between several" inputmode="decimal"><div class="chips">${chipHtml(pv)}</div></div><input class="sp-note" data-id="${s.id}" value="${esc(((drafts[s.id]||{}).note??s.note)||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
   }).join('')||'<p class="mut">No stops yet. Tap a shop in Quick add, or search below.</p>';
   $('clrdone').classList.toggle('hide',!stops.some(s=>s.done));const nTodo=stops.filter(s=>!s.done).length;$('sortnear').classList.toggle('hide',nTodo<2);$('openrun').classList.toggle('hide',nTodo<1);renderRet();
   try{localStorage.setItem('dlstops',JSON.stringify(stops))}catch(e){}
@@ -233,7 +302,7 @@ async function undoStop(id,b){
     if(r2.error)await sb.from('plan_stops').update({done:false}).eq('id',id);
   }
   s.done=false;s.status=null;s.reason=null;
-  drafts[id]={psi:(s.psi||[]).map(String),note:u.note||''};
+  drafts[id]={psi:[(s.psi||[]).join('.')],note:u.note||''};
   delete undoMap[id];saveUndo();
   renderStops();loadLogs();toast('Undone. '+s.shop_name+' is back on the list.');
 }
@@ -256,6 +325,7 @@ function openFail(id){
 $('stops').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.undo)return undoStop(b.dataset.undo,b);
+  if(b.dataset.stock){const st=stops.find(x=>shopKey(x)===b.dataset.stock);return openStockFor(b.dataset.stock,st?st.shop_name:'')}
   const id=b.dataset.ok||b.dataset.fail||b.dataset.add||b.dataset.cam||b.dataset.up||b.dataset.dn||b.dataset.rm,i=stops.findIndex(s=>s.id===id);
   if(b.dataset.cam){scan(document.querySelector(`.sps[data-id="${id}"]`),'sp-in',id,b)}
   else if(b.dataset.add){const c=document.querySelector(`.sps[data-id="${id}"]`);addField(c,'sp-in').dataset.id=id;c.lastChild.focus()}
@@ -301,7 +371,6 @@ $('openrun').onclick=()=>{
   window.open(u,'_blank','noopener');
 };
 $('clrdone').onclick=()=>{stops.filter(s=>s.done).forEach(s=>delete undoMap[s.id]);saveUndo();stops=stops.filter(s=>!s.done);renderStops();sb.from('plan_stops').delete().eq('done',true).then(()=>{})};
-$('pmore').onclick=()=>addField($('ppsis'),'pp').focus();
 $('padd').onclick=async()=>{
   const name=((picked&&picked.name)||(G.ac?G.ac.value:($('plainshop')||{}).value)||'').trim();
   if(!name)return toast('Enter or search for a shop.');
@@ -311,7 +380,7 @@ $('padd').onclick=async()=>{
   stops.push(r.data);renderStops();
   saveShop({name,place_id:row.place_id,address:row.address,lat:row.lat,lng:row.lng});
   picked=null;if(G.ac)G.ac.value='';else $('plainshop').value='';
-  $('ppsis').innerHTML='<input class="pp" placeholder="PSI" inputmode="decimal">';
+  {const pp=$('ppsis').querySelector('.pp');pp.value='';chipsFor(pp)}
   if(!row.lat&&G.maps)toast('Added without a map pin. Pick a result from the search list to get a pin.');
 };
 
@@ -370,10 +439,11 @@ $('shopfilter').oninput=renderShops;$('rshopfilter').oninput=renderShops;
 $('shopedit').onclick=()=>{editShops=!editShops;$('shopedit').textContent=editShops?'Done':'✎ Edit';renderShops()};
 
 /* ---------- settings + Teams ---------- */
-let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false,weekly_on:false};
+let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false,weekly_on:false,base_name:'',base_lat:null,base_lng:null,base_return:true};
 try{SET={...SET,...JSON.parse(localStorage.getItem('dlset')||'{}')}}catch(e){}
 const okHook=u=>{try{const h=new URL(u);return h.protocol==='https:'&&/(\.logic\.azure\.com|\.powerplatform\.com|\.webhook\.office\.com|\.office\.com)$/.test(h.hostname)}catch(e){return false}};
-const fixNulls=o=>{for(const k in o)if(o[k]===null)o[k]=typeof SET[k]==='boolean'?false:'';return o};
+const fixNulls=o=>{for(const k in o)if(o[k]===null&&k!=='base_lat'&&k!=='base_lng')o[k]=k==='base_return'?true:typeof SET[k]==='boolean'?false:'';return o};
+let baseTmp=null;
 function applySettings(){$('sendlist').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook&&SET.teams_list));$('tsum').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook))}
 $('tsum').onclick=async()=>{
   if(!logs.length&&!pickups.length)return toast('Nothing to send for this day.');
@@ -396,7 +466,7 @@ async function teamsPing(type,row,progress){
 }
 $('sendlist').onclick=async()=>{
   snapDrafts();
-  const list=stops.filter(s=>!s.done).map(s=>{const d=(drafts[s.id]||{}).psi;return{shop_name:s.shop_name,address:s.address,psi:(d&&d.length?d:(s.psi||[])).map(parseFloat).filter(n=>!isNaN(n))}});
+  const list=stops.filter(s=>!s.done).map(s=>{const d=(drafts[s.id]||{}).psi;return{shop_name:s.shop_name,address:s.address,psi:d&&d.length?parsePsi(d.join('.')):(s.psi||[]).map(Number)}});
   if(!list.length)return toast('Nothing to send.');
   const r=await sb.functions.invoke('teams-notify',{body:{type:'list',stops:list}});
   toast(r.error||(r.data&&r.data.error)?'Teams message failed. Check Settings.':'List sent to Teams.');
@@ -407,10 +477,17 @@ async function saveSettings(close){
   if(hook&&!okHook(hook)){toast('That doesn’t look like a Teams workflow address.',7000);return false}
   const {data:u}=await sb.auth.getUser();
   const row={user_id:u.user.id,display_name:$('s-name').value.trim()||null,timezone:$('s-tz').value,email_on:$('s-eon').checked,email_to:$('s-eto').value.trim()||null,email_time:$('s-etime').value||'16:55',teams_on:$('s-ton').checked&&!!hook,teams_webhook:hook||null,teams_list:$('s-tl').checked,teams_delivered:$('s-td').checked,teams_pickups:$('s-tp').checked,teams_eod:$('s-teod').checked,weekly_on:$('s-weekly').checked};
-  const r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
+  const bs=baseTmp||{name:SET.base_name||null,lat:SET.base_lat??null,lng:SET.base_lng??null};
+  Object.assign(row,{base_name:bs.name||null,base_lat:bs.lat??null,base_lng:bs.lng??null,base_return:$('s-bret').checked});
+  let r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
+  if(r.error&&/base_/.test(r.error.message)){
+    ['base_name','base_lat','base_lng','base_return'].forEach(k=>delete row[k]);
+    r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
+    if(!r.error)setTimeout(()=>toast('Saved, but your home base needs the new SQL run in Supabase first.',9000),300);
+  }
   if(r.error){toast(r.error.message);return false}
   SET={...SET,...fixNulls({...row})};try{localStorage.setItem('dlset',JSON.stringify(SET))}catch(e){}
-  applySettings();
+  applySettings();baseTmp=null;updKm();
   const gk=$('s-gkey').value.trim();
   if(gk){localStorage.setItem('gmkey',gk);toast('Saved. Reloading…');setTimeout(()=>location.reload(),600);return true}
   if(close){$('dlg').close();toast('Settings saved.')}
@@ -446,11 +523,30 @@ function openSettings(){
    ${row('End-of-day summary','',sw('s-teod',SET.teams_eod),'s-ton')}
    <div class="srow" data-for="s-ton"><button class="g s" id="s-test">Send a test message</button></div>
   </div>
+  <div class="slabel">Kilometres</div><div class="sgroup">
+   ${row('Home base',`<span id="s-bname">${SET.base_name?esc(SET.base_name):'Not set. Where your runs start and end.'}</span>`,`<button class="g s" id="s-bhere">📍 Use here</button>`)}
+   <div class="srow" style="display:block"><div id="s-bsearch">${G.places?'':'<span class="mut">Add your Google key to search for an address. Or stand at base and tap Use here.</span>'}</div></div>
+   ${row('Count the drive back to base','',sw('s-bret',SET.base_return!==false))}
+  </div>
   <div class="slabel">This device</div><div class="sgroup">
    ${row('Google key',gKey()?'A key is saved on this device':'Needed for search and the map',`<input class="sin" id="s-gkey" placeholder="${gKey()?'Replace key':'Paste key'}" autocomplete="off">`)}
   </div></div>
   <div class="sfoot"><button id="s-save" style="flex:1">Save</button><button class="g" id="s-out">Sign out</button></div></div>`;
   $('dlg').showModal();
+  baseTmp=null;
+  $('s-bhere').onclick=()=>{
+    if(!navigator.geolocation)return toast('This phone won’t share its location.');
+    toast('Finding where you are…');
+    navigator.geolocation.getCurrentPosition(p=>{
+      baseTmp={name:'Spot I set ('+p.coords.latitude.toFixed(4)+', '+p.coords.longitude.toFixed(4)+')',lat:p.coords.latitude,lng:p.coords.longitude};
+      $('s-bname').textContent=baseTmp.name+' · tap Save';toast('Got it. Tap Save.');
+    },()=>toast('Couldn’t get your location. Check location is allowed for this site.'),{enableHighAccuracy:true,timeout:10000,maximumAge:0});
+  };
+  if(G.places){
+    const el=new G.places.PlaceAutocompleteElement({includedRegionCodes:['nz'],locationBias:{center:{lat:-39.06,lng:174.08},radius:50000}});
+    const h=async e=>{try{const p=e.placePrediction?e.placePrediction.toPlace():e.place;await p.fetchFields({fields:['displayName','formattedAddress','location']});baseTmp={name:p.displayName+(p.formattedAddress?', '+p.formattedAddress:''),lat:p.location.lat(),lng:p.location.lng()};$('s-bname').textContent=baseTmp.name+' · tap Save'}catch(x){toast('Couldn’t load that place. Try again.')}};
+    el.addEventListener('gmp-select',h);el.addEventListener('gmp-placeselect',h);$('s-bsearch').appendChild(el);
+  }
   document.querySelectorAll('#dlgbody [data-for]').forEach(r=>{const w=$(r.dataset.for),u=()=>r.classList.toggle('hide',!w.checked);w.addEventListener('change',u);u()});
   $('s-x').onclick=()=>$('dlg').close();
   $('s-save').onclick=()=>saveSettings(true);
@@ -505,7 +601,7 @@ $('loglist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.e)op
 async function openEdit(id){
   const l=logs.find(x=>x.id===id);if(!l)return;cur={photo:null};$('dlgbody').onclick=null;
   const d=new Date(l.delivered_at),hh=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  $('dlgbody').innerHTML=`<b>Edit delivery</b><div style="margin:10px 0"><input id="e-shop" value="${esc(l.shop_name)}" placeholder="Shop"><input id="e-psi" value="${esc((l.psi||[]).join(', '))}" placeholder="PSI, separated by commas (blank if none)" inputmode="decimal"><input id="e-time" type="time" value="${hh}"><input id="e-note" value="${esc(l.note||'')}" placeholder="Note"></div><div class="row"><button id="e-save" style="flex:1">Save</button><button class="g" id="e-del">Delete</button><button class="g" id="e-x">Cancel</button></div>`;
+  $('dlgbody').innerHTML=`<b>Edit delivery</b><div style="margin:10px 0"><input id="e-shop" value="${esc(l.shop_name)}" placeholder="Shop"><input id="e-psi" value="${esc((l.psi||[]).join(', '))}" placeholder="PSI, dots or commas between (blank if none)" inputmode="decimal"><input id="e-time" type="time" value="${hh}"><input id="e-note" value="${esc(l.note||'')}" placeholder="Note"></div><div class="row"><button id="e-save" style="flex:1">Save</button><button class="g" id="e-del">Delete</button><button class="g" id="e-x">Cancel</button></div>`;
   $('dlg').showModal();
   $('e-x').onclick=()=>$('dlg').close();
   $('e-del').onclick=async()=>{
@@ -515,7 +611,7 @@ async function openEdit(id){
     $('dlg').close();loadLogs();
   };
   $('e-save').onclick=async()=>{
-    const psi=$('e-psi').value.split(/[,\s]+/).map(parseFloat).filter(n=>!isNaN(n)),shop=$('e-shop').value.trim();
+    const psi=parsePsi($('e-psi').value),shop=$('e-shop').value.trim();
     if(!shop)return toast('A shop name is needed.');
     const [h,m]=($('e-time').value||hh).split(':').map(Number),nd=new Date(l.delivered_at);nd.setHours(h,m);
     const upd={shop_name:shop,psi,note:$('e-note').value.trim()||null,delivered_at:nd.toISOString()};
@@ -552,13 +648,13 @@ $('mail').onclick=async()=>{
 /* ---------- Google Maps + scanning ---------- */
 function setupMaps(){
   const key=gKey();
-  if(!key){$('keybox').classList.remove('hide');return}
+  if(!key){$('keybox').classList.remove('hide');G._rd();return}
   window.gm_authFailure=()=>toast('Google rejected the Maps key. Check it and the enabled APIs.');
   new Promise((res,rej)=>{window.__gm=res;const s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&loading=async&region=NZ&language=en-NZ&callback=__gm';s.onerror=rej;document.head.appendChild(s)})
   .then(async()=>{
     G.maps=await google.maps.importLibrary('maps');G.places=await google.maps.importLibrary('places');G.marker=await google.maps.importLibrary('marker');
-    mountSearch();$('mechonly').onchange=mountSearch;renderMap();
-  }).catch(()=>toast('Google Maps is unavailable right now (offline?). Typing a shop name still works.'));
+    mountSearch();$('mechonly').onchange=mountSearch;renderMap();G._rd();
+  }).catch(()=>{G._rd();toast('Google Maps is unavailable right now (offline?). Typing a shop name still works.')});
 }
 $('keysave').onclick=()=>{const k=$('keyin').value.trim();if(!k)return;localStorage.setItem('gmkey',k);location.reload()};
 function mountSearch(){
@@ -575,7 +671,11 @@ async function onPick(e){
     picked={name:p.displayName,address:p.formattedAddress,lat:p.location.lat(),lng:p.location.lng(),place_id:p.id};
   }catch(err){toast('Couldn’t load that place. Try again.')}
 }
-function fillFields(c,cls,id,list){c.innerHTML='';list.forEach(v=>{const i=addField(c,cls,v);if(id)i.dataset.id=id})}
+function fillFields(c,cls,id,list){
+  const inp=c.querySelector('.'+cls);if(!inp)return;
+  const a=parsePsi(inp.value);list.forEach(v=>{const n=Number(v);if(!a.includes(n))a.push(n)});
+  inp.value=a.join('.');chipsFor(inp);if(id)snapDrafts();
+}
 function scan(c,cls,id,btn){
   const key=gKey();if(!key)return toast('Add your Google key first.');
   const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.setAttribute('capture','environment');inp.style.display='none';document.body.appendChild(inp);
@@ -589,7 +689,7 @@ function scan(c,cls,id,btn){
       const e=j.responses&&j.responses[0];if(e&&e.error)throw new Error(e.error.message);
       const text=(e&&e.fullTextAnnotation&&e.fullTextAnnotation.text)||'';
       const found=[...new Set([...text.matchAll(/P[S5][I1l|]\s*[:#\-\u2010-\u2015]?\s*([0-9OoIl]{3,})/gi)].map(m=>m[1].replace(/[Oo]/g,'0').replace(/[Il]/g,'1')))];
-      found.length?(fillFields(c,cls,id,found),toast('Read '+found.join(', ')+'. Check before logging.',8000)):toast('No PSI number found. Try a closer, flatter photo.');
+      found.length?(fillFields(c,cls,id,found),toast('Read '+found.join(', ')+'. Added to the list. Check before logging.',8000)):toast('No PSI number found. Try a closer, flatter photo.');
     }catch(err){toast(isNet(err)?'No signal. Type the PSI instead.':'Scan failed: '+err.message,10000)}
     btn.textContent=old;btn.disabled=false;
   };
@@ -643,7 +743,7 @@ $('radd').onclick=async()=>{
   $('radd').disabled=true;
   try{
     if(!navigator.onLine)throw new Error('offline');
-    await pushDelivery(it);toast('Return logged for '+name);saveShop({name,place_id:it.row.place_id,address:it.row.address,lat:it.row.lat,lng:it.row.lng});
+    await pushDelivery(it);toast(it.photoErr?'Return logged, but the photo didn’t save: '+it.photoErr:'Return logged for '+name,it.photoErr?12000:4500);saveShop({name,place_id:it.row.place_id,address:it.row.address,lat:it.row.lat,lng:it.row.lng});
   }catch(err){
     if(isNet(err)){queue.push(it);saveQ();toast('No signal. Saved on your phone and will send when you’re back online.',7000)}
     else{$('radd').disabled=false;return toast(err.message||'Could not log it.')}
@@ -654,21 +754,300 @@ $('radd').onclick=async()=>{
 };
 async function openPickup(id){
   const p=pickups.find(x=>x.id===id);if(!p)return;$('dlgbody').onclick=null;
-  $('dlgbody').innerHTML=`<b>↩ Return · ${esc(p.shop_name)}</b><div class="mut" style="margin:4px 0 10px">${fmt(p.picked_at)}</div><input id="p-note" value="${esc(p.note||'')}" placeholder="Note"><img id="p-img" alt="Photo" style="max-width:100%;border-radius:8px;display:none;margin-bottom:8px"><div class="row"><button id="p-save" style="flex:1">Save note</button><button class="g" id="p-del">Delete</button><button class="g" id="p-x">Close</button></div>`;
+  $('dlgbody').innerHTML=`<b>↩ Return · ${esc(p.shop_name)}</b><div class="mut" style="margin:4px 0 10px">${fmt(p.picked_at)}</div><input id="p-note" value="${esc(p.note||'')}" placeholder="Note"><img id="p-img" alt="Photo" style="max-width:100%;border-radius:8px;display:none;margin-bottom:8px"><p class="mut" id="p-ph" style="margin:0 0 8px"></p><button class="g" id="p-cam" style="width:100%;margin-bottom:8px">📷 ${p.photo_path?'Replace':'Add'} photo</button><div class="row"><button id="p-save" style="flex:1">Save note</button><button class="g" id="p-del">Delete</button><button class="g" id="p-x">Close</button></div>`;
   $('dlg').showModal();
   $('p-x').onclick=()=>$('dlg').close();
   $('p-save').onclick=async()=>{const r=await sb.from('pickups').update({note:$('p-note').value.trim()||null}).eq('id',id);if(r.error)return toast(r.error.message);$('dlg').close();loadLogs()};
   $('p-del').onclick=async()=>{if(!confirm('Delete this return?'))return;if(p.photo_path)await sb.storage.from('invoices').remove([p.photo_path]);const r=await sb.from('pickups').delete().eq('id',id);if(r.error)return toast(r.error.message);$('dlg').close();loadLogs()};
-  if(p.photo_path){const r=await sb.storage.from('invoices').createSignedUrl(p.photo_path,3600);if(r.data&&$('p-img')){$('p-img').src=r.data.signedUrl;$('p-img').style.display='block'}}
+  const missing=()=>{
+    if(!$('p-ph'))return;
+    $('p-img').style.display='none';$('p-ph').textContent='The photo for this return is missing (it may have been deleted). You can add a new one.';$('p-cam').textContent='📷 Add photo';
+    if(p.photo_path){sb.from('pickups').update({photo_path:null}).eq('id',id).then(()=>{});p.photo_path=null;renderPickups();renderLog()}
+  };
+  $('p-img').onerror=missing;
+  $('p-cam').onclick=()=>pickPhoto(async du=>{
+    const b=$('p-cam');if(!b)return;b.disabled=true;b.textContent='Saving photo…';
+    const up=await uploadPhoto(du);
+    if(!up.path){b.disabled=false;b.textContent='📷 Try again';return toast('Photo didn’t save: '+((up.error&&up.error.message)||'unknown error'),12000)}
+    const old=p.photo_path,r=await sb.from('pickups').update({photo_path:up.path}).eq('id',id);
+    if(r.error){sb.storage.from('invoices').remove([up.path]);b.disabled=false;b.textContent='📷 Try again';return toast(r.error.message)}
+    if(old&&old!==up.path)sb.storage.from('invoices').remove([old]).then(()=>{});
+    p.photo_path=up.path;$('p-img').onerror=null;$('p-img').src=du;$('p-img').style.display='block';$('p-ph').textContent='';
+    b.disabled=false;b.textContent='📷 Replace photo';renderPickups();renderLog();toast('Photo saved.');
+  });
+  if(p.photo_path){
+    $('p-ph').textContent='Loading photo…';
+    const r=await sb.storage.from('invoices').createSignedUrl(p.photo_path,3600);
+    if(!$('p-img'))return;
+    if(r.data&&r.data.signedUrl){$('p-img').src=r.data.signedUrl;$('p-img').style.display='block';$('p-ph').textContent=''}
+    else if(r.error&&isNet(r.error))$('p-ph').textContent='No signal. The photo will show when you’re back online.';
+    else missing();
+  }
 }
 
+/* ---------- kilometres (home base -> stops in order -> base) ---------- */
+let kmCache={},kmT=null,kmRun=0;
+try{kmCache=JSON.parse(localStorage.getItem('dlkm')||'{}')||{}}catch(e){}
+const saveKm=()=>{try{localStorage.setItem('dlkm',JSON.stringify(kmCache))}catch(e){}};
+function homeBase(){
+  const la=Number(SET.base_lat),ln=Number(SET.base_lng);
+  return SET.base_lat!==''&&SET.base_lat!=null&&isFinite(la)&&isFinite(ln)?{lat:la,lng:ln}:null;
+}
+function runPts(rows){
+  const out=[];
+  rows.filter(x=>x.lat!=null&&x.lng!=null).sort((a,b)=>new Date(a.t)-new Date(b.t)).forEach(x=>{
+    const p={lat:Number(x.lat),lng:Number(x.lng)},l=out[out.length-1];if(!l||dist(l,p)>0.05)out.push(p);
+  });
+  return out;
+}
+async function roadKm(pts){
+  // Real road distance from Google (Routes API). Falls back to a straight-line estimate.
+  try{
+    await G.ready;if(!G.maps)throw new Error('no maps');
+    const {Route}=await google.maps.importLibrary('routes');
+    let m=0;
+    for(let i=0;i<pts.length-1;i+=26){
+      const seg=pts.slice(i,i+27),req=w=>({origin:seg[0],destination:seg[seg.length-1],intermediates:seg.slice(1,-1).map(w),travelMode:'DRIVING',fields:['distanceMeters']});
+      let res;try{res=await Route.computeRoutes(req(p=>p))}catch(e){res=await Route.computeRoutes(req(p=>({location:p})))}
+      const rt=res&&res.routes&&res.routes[0];if(!rt||rt.distanceMeters==null)throw new Error('no route');
+      m+=rt.distanceMeters;
+    }
+    return {km:m/1000,est:false};
+  }catch(e){
+    let k=0;for(let i=1;i<pts.length;i++)k+=dist(pts[i-1],pts[i]);
+    return {km:k*1.3,est:true};
+  }
+}
+async function dayKm(d,rows){
+  const b=homeBase();if(!b)return null;
+  const mid=runPts(rows);if(!mid.length)return {km:0,est:false,stops:0};
+  const pts=[b,...mid];if(SET.base_return!==false)pts.push(b);
+  const sig=JSON.stringify(pts.map(p=>[+p.lat.toFixed(4),+p.lng.toFixed(4)]));
+  const c=kmCache[d];
+  if(c&&c.sig===sig&&(!c.est||Date.now()-c.ts<36e5))return c;
+  const r=await roadKm(pts);
+  kmCache[d]={sig,km:r.km,est:r.est,ts:Date.now(),stops:mid.length};
+  const keep=Object.keys(kmCache).sort().slice(-60);Object.keys(kmCache).forEach(k=>{if(!keep.includes(k))delete kmCache[k]});
+  saveKm();return kmCache[d];
+}
+const kmf=n=>(Math.round(n*10)/10).toLocaleString('en-NZ',{maximumFractionDigits:1});
+function updKm(){clearTimeout(kmT);kmT=setTimeout(calcKm,800)}
+async function calcKm(){
+  const el=$('kmline');if(!el)return;
+  if(!homeBase()){el.innerHTML='🚗 Set your home base in Settings to track km. <button class="g s" id="kmset">Set base</button>';$('kmset').onclick=openSettings;return}
+  const my=++kmRun;
+  const sel=new Date(day+'T00:00:00'),mon=new Date(sel);mon.setDate(sel.getDate()-((sel.getDay()+6)%7));
+  const sun=new Date(mon);sun.setDate(mon.getDate()+7);
+  const [d,p]=await Promise.all([
+    sb.from('deliveries').select('delivered_at,lat,lng').gte('delivered_at',mon.toISOString()).lt('delivered_at',sun.toISOString()),
+    sb.from('pickups').select('picked_at,lat,lng').gte('picked_at',mon.toISOString()).lt('picked_at',sun.toISOString())]);
+  if(my!==kmRun)return;
+  if(d.error){el.textContent='';return}
+  const byDay={};
+  (d.data||[]).forEach(x=>(byDay[dstr(x.delivered_at)]=byDay[dstr(x.delivered_at)]||[]).push({t:x.delivered_at,lat:x.lat,lng:x.lng}));
+  (p.data||[]).forEach(x=>(byDay[dstr(x.picked_at)]=byDay[dstr(x.picked_at)]||[]).push({t:x.picked_at,lat:x.lat,lng:x.lng}));
+  el.textContent='🚗 Working out km…';
+  const week=[];let tot=0,est=false;
+  for(let i=0;i<7;i++){
+    const dd=new Date(mon);dd.setDate(mon.getDate()+i);const k=dstr(dd);
+    const r=byDay[k]?await dayKm(k,byDay[k]):{km:0,est:false,stops:0};
+    if(my!==kmRun)return;
+    week.push({k,dd,...r});tot+=r.km;est=est||r.est;
+  }
+  const today=week.find(w=>w.k===day)||{km:0};
+  el.innerHTML=`🚗 <b>${kmf(today.km)} km</b> this day · <b>${kmf(tot)} km</b> this week${est?' <span title="Google road distance unavailable">(≈ estimate)</span>':''} <button class="g s" id="kmdet">Details</button>`;
+  $('kmdet').onclick=()=>{
+    $('dlgbody').onclick=null;
+    $('dlgbody').innerHTML=`<b style="font-size:18px">Kilometres</b><div class="mut" style="margin:2px 0 10px">Week of ${mon.toLocaleDateString('en-NZ',{day:'numeric',month:'short'})} · from ${esc(SET.base_name||'your base')}${SET.base_return!==false?' and back':''}</div>`+
+      week.map(w=>`<div class="del"><span>${w.dd.toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'})}${w.stops?` <span class="mut">· ${w.stops} stop${w.stops>1?'s':''}</span>`:''}</span><b>${kmf(w.km)} km${w.est?' ≈':''}</b></div>`).join('')+
+      `<div class="del" style="border-top:1px solid var(--line);margin-top:4px"><b>Total</b><b>${kmf(tot)} km</b></div>`+
+      (est?'<p class="mut">≈ means Google’s road distance wasn’t available, so it’s a straight-line estimate. Turn on the Routes API for your Google key to fix it.</p>':'<p class="mut">Road distance from Google, in the order you delivered. Stops without a map pin aren’t counted.</p>')+
+      '<button class="g" id="km-x" style="width:100%;margin-top:8px">Close</button>';
+    $('dlg').showModal();$('km-x').onclick=()=>$('dlg').close();
+  };
+}
+
+/* ---------- workshop stock ---------- */
+let stock=[],stSel=null;const stT={};
+try{stock=JSON.parse(localStorage.getItem('dlstock')||'[]')||[]}catch(e){}
+const saveStockL=()=>{try{localStorage.setItem('dlstock',JSON.stringify(stock))}catch(e){}};
+const shopKey=x=>x.place_id||String(x.shop_name||x.name||'').trim().toLowerCase();
+const lowOf=key=>stock.filter(i=>i.shop_key===key&&Number(i.have)<Number(i.target));
+const nf=n=>String(Math.round(Number(n)*100)/100);
+async function loadStock(){
+  const r=await sb.from('stock_items').select('*').order('item');
+  if(r.error){
+    if(!isNet(r.error)){$('sterr').textContent='Stock isn’t set up yet. Run the new SQL in Supabase, then reopen the app.';$('sterr').classList.remove('hide')}
+    return;
+  }
+  $('sterr').classList.add('hide');stock=r.data||[];saveStockL();
+  renderStockShops();renderStock();renderStops();
+}
+function renderStockShops(){
+  const el=$('stshops');if(!el)return;
+  const m=new Map();
+  myShops.forEach(s=>m.set(shopKey(s),{key:shopKey(s),name:s.name}));
+  stock.forEach(i=>{if(!m.has(i.shop_key))m.set(i.shop_key,{key:i.shop_key,name:i.shop_name})});
+  const q=($('stfilter').value||'').trim().toLowerCase();
+  const list=[...m.values()].filter(s=>!q||s.name.toLowerCase().includes(q)).map(s=>({...s,n:stock.filter(i=>i.shop_key===s.key).length,low:lowOf(s.key).length}))
+    .sort((a,b)=>b.low-a.low||(b.n>0)-(a.n>0)||a.name.localeCompare(b.name));
+  G.stk=new Map(list.map(s=>[s.key,s]));
+  el.innerHTML=list.map(s=>`<button class="g s${s.low?' warn':''}" data-stk="${esc(s.key)}">${esc(s.name)}${s.low?` · ${s.low} low`:s.n?` · ${s.n}`:''}</button>`).join('')||`<span class="mut">${m.size?'No match.':'Shops you add or log show here. Tap one to set up its stock.'}</span>`;
+}
+$('stfilter').oninput=renderStockShops;
+$('stshops').onclick=e=>{const b=e.target.closest('button');if(!b||!b.dataset.stk)return;const s=G.stk&&G.stk.get(b.dataset.stk);openStockFor(b.dataset.stk,s?s.name:b.textContent)};
+function openStockFor(key,name){
+  stSel={key,name:name||(stock.find(i=>i.shop_key===key)||{}).shop_name||'Shop'};
+  if(tab!=='stock')setTab('stock');else renderStock();
+  setTimeout(()=>$('stcard').scrollIntoView({behavior:'smooth',block:'start'}),50);
+}
+$('stclose').onclick=()=>{stSel=null;renderStock()};
+function renderStock(){
+  const card=$('stcard');if(!card)return;
+  if(!stSel){card.classList.add('hide');return}
+  card.classList.remove('hide');$('stname').textContent=stSel.name;
+  const items=stock.filter(i=>i.shop_key===stSel.key).sort((a,b)=>((Number(b.have)<Number(b.target))-(Number(a.have)<Number(a.target)))||a.item.localeCompare(b.item));
+  const low=items.filter(i=>Number(i.have)<Number(i.target));
+  $('stneed').innerHTML=!items.length?'<span class="mut">No items yet. Add what this workshop keeps on the shelf below.</span>':
+    low.length?`<div><b class="need">Needs ${low.length} item${low.length>1?'s':''}:</b> ${low.map(i=>esc(nf(i.target-i.have))+' × '+esc(i.item)).join(', ')}</div><div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="g s" id="stcopy">Copy list</button><button class="g s" id="stfull">✓ All restocked</button></div>`:
+    '<span class="mut">✓ Everything is at or above what they should have.</span>';
+  $('stitems').innerHTML=items.map(i=>{
+    const need=Number(i.target)-Number(i.have);
+    return `<div class="sti${need>0?' low':''}"><div class="stn"><b>${esc(i.item)}</b><small>Should have ${esc(nf(i.target))}${need>0?` · <span class="need">needs ${esc(nf(need))}</span>`:' · OK'}</small></div><div class="qty"><button class="g s" data-qm="${i.id}" aria-label="One less">−</button><span>${esc(nf(i.have))}</span><button class="g s" data-qp="${i.id}" aria-label="One more">+</button></div><button class="g s" data-qe="${i.id}" aria-label="Edit">✎</button></div>`;
+  }).join('');
+  if($('stcopy'))$('stcopy').onclick=async()=>{
+    const t=stSel.name+' needs:\n'+low.map(i=>'- '+nf(i.target-i.have)+' × '+i.item).join('\n');
+    try{await navigator.clipboard.writeText(t);toast('List copied.')}catch(e){toast('Couldn’t copy on this phone.')}
+  };
+  if($('stfull'))$('stfull').onclick=async()=>{
+    if(!confirm('Set every item at '+stSel.name+' back to its full amount?'))return;
+    const now=new Date().toISOString();
+    for(const i of low){i.have=i.target;i.updated_at=now}
+    saveStockL();renderStock();renderStockShops();renderStops();
+    const rs=await Promise.all(low.map(i=>sb.from('stock_items').update({have:i.target,updated_at:now}).eq('id',i.id)));
+    if(rs.some(x=>x.error))toast('Some changes didn’t save. Check your signal.');
+  };
+}
+function stockSave(i){
+  clearTimeout(stT[i.id]);
+  stT[i.id]=setTimeout(async()=>{const r=await sb.from('stock_items').update({have:i.have,updated_at:new Date().toISOString()}).eq('id',i.id);if(r.error)toast(isNet(r.error)?'No signal. Stock change not saved yet. Try again shortly.':r.error.message)},600);
+}
+$('stitems').onclick=e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const id=b.dataset.qm||b.dataset.qp||b.dataset.qe,i=stock.find(x=>x.id===id);if(!i)return;
+  if(b.dataset.qe)return editStock(i);
+  i.have=Math.max(0,Number(i.have)+(b.dataset.qp?1:-1));saveStockL();renderStock();renderStockShops();renderStops();stockSave(i);
+};
+$('stadd').onclick=async()=>{
+  if(!stSel)return;
+  const item=$('stnew').value.trim();if(!item)return toast('Type the item name.');
+  const target=Math.max(0,Number($('sttgt').value)||0),have=$('sthave').value===''?target:Math.max(0,Number($('sthave').value)||0);
+  const b=$('stadd');b.disabled=true;
+  const r=await sb.from('stock_items').insert({shop_key:stSel.key,shop_name:stSel.name,item,target,have}).select().single();
+  b.disabled=false;
+  if(r.error)return toast(isNet(r.error)?'No signal. Try again when you’re back online.':r.error.message);
+  stock.push(r.data);saveStockL();$('stnew').value='';$('sttgt').value='';$('sthave').value='';$('stnew').focus();
+  renderStock();renderStockShops();renderStops();
+};
+function editStock(i){
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b>Edit item</b><div style="margin:10px 0"><label class="mut">Item</label><input id="si-name" value="${esc(i.item)}"><div class="row"><div style="flex:1"><label class="mut">Should have</label><input id="si-t" type="number" inputmode="decimal" min="0" value="${esc(nf(i.target))}"></div><div style="flex:1"><label class="mut">Has now</label><input id="si-h" type="number" inputmode="decimal" min="0" value="${esc(nf(i.have))}"></div></div></div><div class="row"><button id="si-save" style="flex:1">Save</button><button class="g" id="si-del">Delete</button><button class="g" id="si-x">Cancel</button></div>`;
+  $('dlg').showModal();$('si-x').onclick=()=>$('dlg').close();
+  $('si-save').onclick=async()=>{
+    const upd={item:$('si-name').value.trim()||i.item,target:Math.max(0,Number($('si-t').value)||0),have:Math.max(0,Number($('si-h').value)||0),updated_at:new Date().toISOString()};
+    const r=await sb.from('stock_items').update(upd).eq('id',i.id);if(r.error)return toast(r.error.message);
+    Object.assign(i,upd);saveStockL();$('dlg').close();renderStock();renderStockShops();renderStops();
+  };
+  $('si-del').onclick=async()=>{
+    if(!confirm('Delete '+i.item+'?'))return;
+    const r=await sb.from('stock_items').delete().eq('id',i.id);if(r.error)return toast(r.error.message);
+    stock=stock.filter(x=>x!==i);saveStockL();$('dlg').close();renderStock();renderStockShops();renderStops();
+  };
+}
+
+/* ---------- notes ---------- */
+let notes=[],nCur=null,nT=null,nSyncing=false;
+try{notes=JSON.parse(localStorage.getItem('dlnotes')||'[]')||[]}catch(e){}
+const saveNL=()=>{try{localStorage.setItem('dlnotes',JSON.stringify(notes))}catch(e){}};
+async function syncNotes(){
+  if(nSyncing)return false;nSyncing=true;let ok=true;
+  try{
+    for(const n of notes.filter(x=>x.dirty)){
+      const row={id:n.id,title:n.title||null,body:n.body||null,updated_at:n.updated_at};
+      const r=await sb.from('notes').upsert(row,{onConflict:'id'});
+      if(r.error){ok=false;if(!isNet(r.error))G.notesErr=r.error.message;break}
+      n.dirty=false;n.saved=true;
+    }
+  }catch(e){ok=false}
+  nSyncing=false;saveNL();return ok;
+}
+async function loadNotes(){
+  await syncNotes();
+  const r=await sb.from('notes').select('*').order('updated_at',{ascending:false});
+  if(r.error){if(!isNet(r.error))G.notesErr=r.error.message;renderNotes();return}
+  G.notesErr=null;
+  const keep=notes.filter(n=>n.dirty||(nCur&&n.id===nCur.id&&!n.saved));
+  notes=[...keep,...(r.data||[]).filter(x=>!keep.some(k=>k.id===x.id)).map(x=>({...x,saved:true}))];
+  if(nCur)nCur=notes.find(n=>n.id===nCur.id)||nCur;
+  saveNL();renderNotes();
+}
+function renderNotes(){
+  const el=$('nlist');if(!el)return;
+  const list=[...notes].filter(n=>(n.title||n.body)).sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+  const when=t=>{const d=new Date(t);return dstr(d)===dstr(Date.now())?fmt(d):d.toLocaleDateString('en-NZ',{day:'numeric',month:'short'})};
+  el.innerHTML=(G.notesErr?`<p class="mut">${/notes/.test(G.notesErr)?'Notes aren’t set up yet. Run the new SQL in Supabase. Notes you write are kept on this phone until then.':esc(G.notesErr)}</p>`:'')+
+    (list.map(n=>{const first=(n.body||'').split('\n').find(l=>l.trim())||'';return `<button class="nrow" data-n="${n.id}"><b>${esc(n.title||first||'Untitled')}</b><small>${esc(when(n.updated_at))}${n.title&&first?' · '+esc(first):''}${n.dirty?' · not synced yet':''}</small></button>`}).join('')||'<p class="mut">No notes yet.</p>');
+}
+$('nlist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.n)openNote(b.dataset.n)};
+function openNote(id){
+  nCur=notes.find(n=>n.id===id);if(!nCur)return;
+  $('nlistcard').classList.add('hide');$('ned').classList.remove('hide');
+  $('ntitle').value=nCur.title||'';$('nbody').value=nCur.body||'';$('nstat').textContent=nCur.dirty?'Not synced yet':'';
+}
+$('nnew').onclick=()=>{
+  const n={id:crypto.randomUUID(),title:'',body:'',updated_at:new Date().toISOString()};
+  notes.unshift(n);openNote(n.id);$('nbody').focus();
+};
+function noteInput(){
+  if(!nCur)return;
+  nCur.title=$('ntitle').value;nCur.body=$('nbody').value;nCur.updated_at=new Date().toISOString();nCur.dirty=true;saveNL();
+  $('nstat').textContent='Saving…';clearTimeout(nT);nT=setTimeout(pushNote,700);
+}
+async function pushNote(){const ok=await syncNotes();if($('nstat'))$('nstat').textContent=ok?'Saved':'Saved on this phone. Will sync when online.'}
+$('ntitle').oninput=noteInput;$('nbody').oninput=noteInput;
+function closeNote(){
+  if(!nCur)return;
+  clearTimeout(nT);
+  const n=nCur;nCur=null;
+  if(!(n.title||'').trim()&&!(n.body||'').trim()){
+    notes=notes.filter(x=>x!==n);saveNL();if(n.saved||n.dirty)sb.from('notes').delete().eq('id',n.id).then(()=>{});
+  }else if(n.dirty)syncNotes().then(renderNotes);
+  $('ned').classList.add('hide');$('nlistcard').classList.remove('hide');renderNotes();
+}
+$('nback').onclick=closeNote;
+$('ndel').onclick=async()=>{
+  if(!nCur||!confirm('Delete this note?'))return;
+  const n=nCur;nCur=null;clearTimeout(nT);
+  notes=notes.filter(x=>x!==n);saveNL();
+  $('ned').classList.add('hide');$('nlistcard').classList.remove('hide');renderNotes();
+  const r=await sb.from('notes').delete().eq('id',n.id);if(r.error&&!isNet(r.error))toast(r.error.message);
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&nCur&&nCur.dirty){clearTimeout(nT);syncNotes()}});
+
 /* ---------- tabs ---------- */
-document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{
-  tab=b.dataset.t;document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x===b));
-  ['run','ret','map','log'].forEach(t=>$('v-'+t).classList.toggle('hide',t!==tab));
-  if(tab==='map')renderMap();
-  if(tab==='ret')renderRet();
-});
+function setTab(t){
+  if(tab==='notes'&&t!=='notes')closeNote();
+  tab=t;document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+  ['run','ret','stock','map','log','notes'].forEach(k=>$('v-'+k).classList.toggle('hide',k!==t));
+  $('notesbtn').classList.toggle('on',t==='notes');
+  if(t==='map')renderMap();
+  if(t==='ret')renderRet();
+  if(t==='stock'){renderStockShops();renderStock()}
+  if(t==='notes'){renderNotes();loadNotes()}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+$('notesbtn').onclick=()=>setTab(tab==='notes'?'run':'notes');
 boot();
 </script>
 </body>

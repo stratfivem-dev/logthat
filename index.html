@@ -846,11 +846,19 @@ async function dayKm(d,rows){
   const pts=[b,...mid];if(SET.base_return!==false)pts.push(b);
   const sig=JSON.stringify(pts.map(p=>[+p.lat.toFixed(4),+p.lng.toFixed(4)]));
   const c=kmCache[d];
-  if(c&&c.sig===sig&&(!c.est||Date.now()-c.ts<36e5))return c;
+  if(c&&c.sig===sig&&(!c.est||Date.now()-c.ts<36e5)){if(!c.synced)syncKm(d,c);return c}
   const r=await roadKm(pts);
-  kmCache[d]={sig,km:r.km,est:r.est,ts:Date.now(),stops:mid.length};
+  kmCache[d]={sig,km:r.km,est:r.est,ts:Date.now(),stops:mid.length};syncKm(d,kmCache[d]);
   const keep=Object.keys(kmCache).sort().slice(-60);Object.keys(kmCache).forEach(k=>{if(!keep.includes(k))delete kmCache[k]});
   saveKm();return kmCache[d];
+}
+// Save each day's km to the database so the daily/weekly emails and Teams summary can include it.
+async function syncKm(d,c){
+  try{
+    const row={day:d,km:Math.round(c.km*10)/10,est:!!c.est,stops:c.stops||0,updated_at:new Date().toISOString()};if(ME)row.user_id=ME;
+    const r=await sb.from('run_km').upsert(row,{onConflict:'user_id,day'});
+    if(!r.error){c.synced=true;saveKm()}
+  }catch(e){}
 }
 const kmf=n=>(Math.round(n*10)/10).toLocaleString('en-NZ',{maximumFractionDigits:1});
 function updKm(){clearTimeout(kmT);kmT=setTimeout(calcKm,800)}

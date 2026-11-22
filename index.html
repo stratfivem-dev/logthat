@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
 <main>
@@ -36,7 +36,7 @@
         <div class="row sp"><b>To deliver</b><button class="g s hide" id="sendlist">Send to Teams</button></div>
         <div id="stops" style="margin:8px 0"></div>
         <div class="row" style="flex-wrap:wrap">
-          <button class="g s hide" id="sortnear">📍 Sort by closest</button>
+          <button class="g s hide" id="sortnear">⚡ Best route</button>
           <button class="g s hide" id="openrun">🗺 Open run in Maps</button>
           <button class="g s hide" id="clrdone">Clear delivered</button>
         </div>
@@ -72,6 +72,23 @@
       <div class="card"><div id="rlist"></div></div>
     </section>
 
+    <section id="v-round" class="hide">
+      <div class="card">
+        <div class="row sp"><b>My round</b><button class="g s" id="rdedit">✎ Edit</button></div>
+        <div id="rddays" class="row" style="flex-wrap:wrap;margin:10px 0"></div>
+        <div id="rdlist"></div>
+        <div class="row" style="flex-wrap:wrap;margin-top:8px"><button class="g s hide" id="rdbest">⚡ Best route</button><button class="g s hide" id="rdmaps">🗺 Open in Maps</button></div>
+      </div>
+      <div class="card">
+        <b>Add shops to <span id="rddayname"></span></b>
+        <input id="rdfilter" placeholder="Filter your shops" style="margin:8px 0">
+        <div id="rdchips" class="row" style="flex-wrap:wrap;max-height:190px;overflow:auto;margin-bottom:10px"></div>
+        <div class="mut" style="margin:0 0 6px">Or search</div>
+        <div id="rdsearch"><input placeholder="Search needs your Google key" disabled></div>
+        <button class="g" id="rdpaste" style="width:100%">📋 Paste from spreadsheet</button>
+      </div>
+    </section>
+
     <section id="v-stock" class="hide">
       <div class="card">
         <b>Workshop stock</b>
@@ -80,7 +97,7 @@
         <div id="stshops" class="row" style="flex-wrap:wrap;max-height:220px;overflow:auto"></div>
       </div>
       <div class="card hide" id="stcard">
-        <div class="row sp"><b id="stname" style="font-size:17px"></b><button class="g s" id="stclose">✕</button></div>
+        <div class="row sp"><b id="stname" style="font-size:17px"></b><span class="row"><button class="g s" id="stshop">Shop page</button><button class="g s" id="stclose">✕</button></span></div>
         <div id="stneed" style="margin:8px 0"></div>
         <div id="stitems"></div>
         <div style="margin-top:12px">
@@ -119,7 +136,7 @@
   </div>
 </main>
 
-<div class="nav hide" id="nav"><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="stock"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2"/><path d="M9 12h6M9 16h4"/></svg><span>Stock</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button></div>
+<div class="nav hide" id="nav"><button data-t="round" class="hide"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Round</span></button><button data-t="run" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg><span>To deliver</span></button><button data-t="ret"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Returns</span></button><button data-t="stock"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2"/><path d="M9 12h6M9 16h4"/></svg><span>Stock</span></button><button data-t="map"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-5.2 7-11a7 7 0 1 0-14 0c0 5.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Map</span></button><button data-t="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Log</span></button></div>
 <dialog id="dlg"><div id="dlgbody"></div></dialog>
 <div class="toast" id="toast"></div>
 
@@ -166,7 +183,7 @@ function addField(c,cls,v){const i=document.createElement('input');i.className=c
 async function boot(){const {data}=await sb.auth.getSession();data.session?start():$('login').classList.remove('hide')}
 $('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)toast(error.message);else{$('login').classList.add('hide');start()}};
 async function start(){
-  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();renderShops();loadShops();loadSettings();listen();loadStock();loadNotes();
+  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();applyMode();renderShops();loadShops();loadSettings();listen();loadStock();loadNotes();loadRound();
   document.querySelectorAll('.dayin').forEach(i=>{i.value=day;i.onchange=()=>{day=i.value;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs()}});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   window.addEventListener('online',()=>{flush();syncNotes()});setInterval(flush,30000);
@@ -195,7 +212,7 @@ async function loadLogs(){
   logs=data||[];await loadPickups(a,b);renderLog();renderPickups();renderMap();updKm();
 }
 function groups(){
-  const g={},add=(x,k)=>(g[k]=g[k]||{name:x.shop_name,address:x.address,lat:x.lat,lng:x.lng,items:[],picks:[]});
+  const g={},add=(x,k)=>(g[k]=g[k]||{key:k,name:x.shop_name,address:x.address,lat:x.lat,lng:x.lng,items:[],picks:[]});
   logs.forEach(l=>add(l,l.place_id||l.shop_name.toLowerCase()).items.push(l));
   pickups.forEach(p=>add(p,p.place_id||p.shop_name.toLowerCase()).picks.push(p));
   return Object.values(g);
@@ -287,7 +304,7 @@ window.addEventListener('pagehide',()=>snapDrafts());
 function renderStops(){
   snapDrafts();
   $('stops').innerHTML=stops.map((s,i)=>{
-    const head=`<div class="row sp"><b>${i+1}. ${esc(s.shop_name)}</b>${s.done?'':`<span class="row"><button class="g s" data-up="${s.id}">▲</button><button class="g s" data-dn="${s.id}">▼</button><button class="g s" data-rm="${s.id}">✕</button></span>`}</div>`;
+    const head=`<div class="row sp"><b>${i+1}. ${shopLink(shopKey(s),s.shop_name)}</b>${s.done?'':`<span class="row"><button class="g s" data-up="${s.id}">▲</button><button class="g s" data-dn="${s.id}">▼</button><button class="g s" data-rm="${s.id}">✕</button></span>`}</div>`;
     if(s.done)return `<div class="stop done">${head}<div class="mut">${s.status==='failed'?'Not delivered · '+esc(s.reason||''):'Delivered · '+esc(pf(s.psi))}</div>${undoMap[s.id]?`<button class="g s" data-undo="${s.id}" style="margin-top:6px">↶ Undo</button>`:''}</div>`;
     const dp=(drafts[s.id]||{}).psi,pv=(dp&&dp.length?dp.filter(Boolean).join('.'):(s.psi||[]).join('.')),low=lowOf(shopKey(s));
     return `<div class="stop">${head}${s.assigned_by?'<div class="mut">📥 From the counter</div>':''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}${low.length?`<button class="g s warn" data-stock="${esc(shopKey(s))}" style="margin-top:6px">🔧 ${low.length} low on stock</button>`:''}<div class="sps" data-id="${s.id}"><input class="sp-in" data-id="${s.id}" value="${esc(pv)}" placeholder="PSI · put a dot between several" inputmode="decimal"><div class="chips">${chipHtml(pv)}</div></div><input class="sp-note" data-id="${s.id}" value="${esc(((drafts[s.id]||{}).note??s.note)||'')}" placeholder="Note (optional)"><div class="row"><button class="g" data-cam="${s.id}">📷</button><a class="btn" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a><button data-ok="${s.id}" style="flex:1">✓ Delivered</button></div><button class="g s" data-fail="${s.id}" style="margin-top:10px">Couldn’t deliver</button></div>`;
@@ -371,29 +388,17 @@ $('stops').onclick=async e=>{
     if(confirm('Remove this stop?')){stops.splice(i,1);renderStops();sb.from('plan_stops').delete().eq('id',id).then(()=>{})}
   }
 };
-$('sortnear').onclick=()=>{
-  if(!navigator.geolocation)return toast('This phone won’t share its location.');
-  const b=$('sortnear');b.disabled=true;toast('Finding where you are…');
-  navigator.geolocation.getCurrentPosition(p=>{
-    b.disabled=false;
-    let here={lat:p.coords.latitude,lng:p.coords.longitude};
-    const done=stops.filter(s=>s.done),todo=stops.filter(s=>!s.done),pin=todo.filter(s=>s.lat!=null&&s.lng!=null),nopin=todo.filter(s=>s.lat==null||s.lng==null),out=[];
-    if(pin.length<2)return toast('Need at least two stops with a map pin to sort.');
-    while(pin.length){let k=0;for(let i=1;i<pin.length;i++)if(dist(here,pin[i])<dist(here,pin[k]))k=i;here=pin[k];out.push(pin.splice(k,1)[0])}
-    stops=[...done,...out,...nopin];renderStops();
-    Promise.all(stops.map((s,k)=>sb.from('plan_stops').update({sort_order:k}).eq('id',s.id))).catch(()=>{});
-    toast('Sorted, closest first.'+(nopin.length?' '+nopin.length+' without a map pin left at the end.':''));
-  },()=>{b.disabled=false;toast('Couldn’t get your location. Check location is allowed for this site.')},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+$('sortnear').onclick=async()=>{
+  const b=$('sortnear');b.disabled=true;toast('Working out the best route…');
+  const done=stops.filter(x=>x.done),todo=stops.filter(x=>!x.done);
+  const r=await bestOrder(todo);b.disabled=false;
+  if(r.list){
+    stops=[...done,...r.list];renderStops();
+    Promise.all(stops.map((x,k)=>sb.from('plan_stops').update({sort_order:k}).eq('id',x.id))).catch(()=>{});
+  }
+  toast(routeMsg(r),8000);
 };
-$('openrun').onclick=()=>{
-  const todo=stops.filter(s=>!s.done);if(!todo.length)return;
-  const MAX=10,run=todo.slice(0,MAX),pt=s=>s.lat!=null&&s.lng!=null?s.lat+','+s.lng:s.shop_name+(s.address?', '+s.address:''),last=run[run.length-1];
-  let u='https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(pt(last));
-  if(last.place_id&&last.lat!=null)u+='&destination_place_id='+encodeURIComponent(last.place_id);
-  if(run.length>1)u+='&waypoints='+encodeURIComponent(run.slice(0,-1).map(pt).join('|'));
-  if(todo.length>MAX)toast('Google Maps takes 10 stops at a time. Opening the first 10.',7000);
-  window.open(u,'_blank','noopener');
-};
+$('openrun').onclick=()=>openInMaps(stops.filter(x=>!x.done));
 $('clrdone').onclick=()=>{stops.filter(s=>s.done).forEach(s=>delete undoMap[s.id]);saveUndo();stops=stops.filter(s=>!s.done);renderStops();sb.from('plan_stops').delete().eq('done',true).then(()=>{})};
 $('padd').onclick=async()=>{
   const name=((picked&&picked.name)||(G.ac?G.ac.value:($('plainshop')||{}).value)||'').trim();
@@ -433,7 +438,7 @@ let myShops=[],editShops=false;
 try{myShops=JSON.parse(localStorage.getItem('dlshops')||'[]')}catch(e){}
 async function loadShops(){
   const r=await sb.from('shops').select('*').order('name');if(r.error)return;
-  myShops=r.data||[];try{localStorage.setItem('dlshops',JSON.stringify(myShops))}catch(e){}renderShops();
+  myShops=r.data||[];try{localStorage.setItem('dlshops',JSON.stringify(myShops))}catch(e){}renderShops();if(typeof renderRoundChips==='function')renderRoundChips();
 }
 async function saveShop(x){
   const name=x.name,key=x.place_id||String(name).trim().toLowerCase();
@@ -463,12 +468,12 @@ $('shopfilter').oninput=renderShops;$('rshopfilter').oninput=renderShops;
 $('shopedit').onclick=()=>{editShops=!editShops;$('shopedit').textContent=editShops?'Done':'✎ Edit';renderShops()};
 
 /* ---------- settings + Teams ---------- */
-let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false,weekly_on:false,base_name:'',base_lat:null,base_lng:null,base_return:true};
+let SET={timezone:'Pacific/Auckland',email_on:true,email_to:'',email_time:'16:55',display_name:'',teams_on:false,teams_webhook:'',teams_list:true,teams_delivered:true,teams_pickups:false,teams_eod:false,weekly_on:false,app_mode:'driver',base_name:'',base_lat:null,base_lng:null,base_return:true};
 try{SET={...SET,...JSON.parse(localStorage.getItem('dlset')||'{}')}}catch(e){}
 const okHook=u=>{try{const h=new URL(u);return h.protocol==='https:'&&/(\.logic\.azure\.com|\.powerplatform\.com|\.webhook\.office\.com|\.office\.com)$/.test(h.hostname)}catch(e){return false}};
 const fixNulls=o=>{for(const k in o)if(o[k]===null&&k!=='base_lat'&&k!=='base_lng')o[k]=k==='base_return'?true:typeof SET[k]==='boolean'?false:'';return o};
 let baseTmp=null;
-function applySettings(){$('sendlist').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook&&SET.teams_list));$('tsum').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook))}
+function applySettings(){applyMode();$('sendlist').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook&&SET.teams_list));$('tsum').classList.toggle('hide',!(SET.teams_on&&SET.teams_webhook))}
 $('tsum').onclick=async()=>{
   if(!logs.length&&!pickups.length)return toast('Nothing to send for this day.');
   const r=await sb.functions.invoke('send-log',{body:{day,teams:true}});
@@ -500,14 +505,15 @@ async function saveSettings(close){
   const hook=$('s-hook').value.trim();
   if(hook&&!okHook(hook)){toast('That doesn’t look like a Teams workflow address.',7000);return false}
   const {data:u}=await sb.auth.getUser();
-  const row={user_id:u.user.id,display_name:$('s-name').value.trim()||null,timezone:$('s-tz').value,email_on:$('s-eon').checked,email_to:$('s-eto').value.trim()||null,email_time:$('s-etime').value||'16:55',teams_on:$('s-ton').checked&&!!hook,teams_webhook:hook||null,teams_list:$('s-tl').checked,teams_delivered:$('s-td').checked,teams_pickups:$('s-tp').checked,teams_eod:$('s-teod').checked,weekly_on:$('s-weekly').checked};
+  const row={user_id:u.user.id,display_name:$('s-name').value.trim()||null,timezone:$('s-tz').value,email_on:$('s-eon').checked,email_to:$('s-eto').value.trim()||null,email_time:$('s-etime').value||'16:55',teams_on:$('s-ton').checked&&!!hook,teams_webhook:hook||null,teams_list:$('s-tl').checked,teams_delivered:$('s-td').checked,teams_pickups:$('s-tp').checked,teams_eod:$('s-teod').checked,weekly_on:$('s-weekly').checked,app_mode:$('s-mode').value};
   const bs=baseTmp||{name:SET.base_name||null,lat:SET.base_lat??null,lng:SET.base_lng??null};
   Object.assign(row,{base_name:bs.name||null,base_lat:bs.lat??null,base_lng:bs.lng??null,base_return:$('s-bret').checked});
   let r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
-  if(r.error&&/base_/.test(r.error.message)){
-    ['base_name','base_lat','base_lng','base_return'].forEach(k=>delete row[k]);
+  if(r.error&&/(base_|app_mode)/.test(r.error.message)){
+    const mode=row.app_mode;
+    ['base_name','base_lat','base_lng','base_return','app_mode'].forEach(k=>delete row[k]);
     r=await sb.from('settings').upsert(row,{onConflict:'user_id'});
-    if(!r.error)setTimeout(()=>toast('Saved, but your home base needs the new SQL run in Supabase first.',9000),300);
+    if(!r.error){SET.app_mode=mode;setTimeout(()=>toast('Saved, but some settings need the new SQL run in Supabase first.',9000),300)}
   }
   if(r.error){toast(r.error.message);return false}
   SET={...SET,...fixNulls({...row})};try{localStorage.setItem('dlset',JSON.stringify(SET))}catch(e){}
@@ -530,6 +536,7 @@ function openSettings(){
   $('dlgbody').innerHTML=`<div class="sset"><div class="shead"><b>Settings</b><button class="g s" id="s-x">Close</button></div><div class="sbody">
   <div class="slabel">You</div><div class="sgroup">
    ${row('Name','Shown in Teams messages',`<input class="sin" id="s-name" value="${esc(SET.display_name)}" placeholder="Optional">`)}
+   ${row('I use this app as','Sales reps get a weekly round instead of deliveries',`<select class="sin" id="s-mode">${opt('driver','Delivery driver',SET.app_mode!=='rep')}${opt('rep','Sales rep',SET.app_mode==='rep')}</select>`)}
    ${row('Time zone','For emails and Teams times',`<select class="sin" id="s-tz">${zones.map(z=>opt(z,z.replace('_',' '),z===SET.timezone)).join('')}</select>`)}
   </div>
   <div class="slabel">End of day</div><div class="sgroup">
@@ -618,7 +625,7 @@ async function dupCheck(psi){
 
 /* ---------- log, edit, export, email ---------- */
 function renderLog(){
-  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${esc(g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Return${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
+  $('loglist').innerHTML=groups().map(g=>`<div class="stop"><b>📍 ${shopLink(g.key,g.name)}</b> ${g.items.length?`<span class="mut">×${g.items.length}</span>`:''}${g.items.map(l=>`<div class="del"><span>${fmt(l.delivered_at)} — ${lineOf(l)}${l.note?`<br><span class="mut">${esc(l.note)}</span>`:''}</span><button class="g s" data-e="${l.id}">Edit</button></div>`).join('')}${g.picks.map(p=>`<div class="del"><span>↩ ${fmt(p.picked_at)} — Return${p.photo_path?' 📎':''}${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div>`).join('')}</div>`).join('')||'<p class="mut">No deliveries for this day.</p>';
   $('tot').textContent=logs.length+' deliver'+(logs.length==1?'y':'ies')+(pickups.length?' · '+pickups.length+' return'+(pickups.length>1?'s':''):'');
 }
 $('loglist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.e)openEdit(b.dataset.e);else if(b&&b.dataset.pk)openPickup(b.dataset.pk)};
@@ -677,7 +684,7 @@ function setupMaps(){
   new Promise((res,rej)=>{window.__gm=res;const s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(key)+'&loading=async&region=NZ&language=en-NZ&callback=__gm';s.onerror=rej;document.head.appendChild(s)})
   .then(async()=>{
     G.maps=await google.maps.importLibrary('maps');G.places=await google.maps.importLibrary('places');G.marker=await google.maps.importLibrary('marker');
-    mountSearch();$('mechonly').onchange=mountSearch;renderMap();G._rd();
+    mountSearch();$('mechonly').onchange=mountSearch;mountRound();renderMap();G._rd();
   }).catch(()=>{G._rd();toast('Google Maps is unavailable right now (offline?). Typing a shop name still works.')});
 }
 $('keysave').onclick=()=>{const k=$('keyin').value.trim();if(!k)return;localStorage.setItem('gmkey',k);location.reload()};
@@ -753,7 +760,7 @@ function renderRet(){
   if($('rclr'))$('rclr').onclick=()=>{pickedR=null;renderRet()};
 }
 function renderPickups(){
-  $('rlist').innerHTML=pickups.map(p=>`<div class="stop"><div class="row sp"><span><b>↩ ${esc(p.shop_name)}</b> <span class="mut">${fmt(p.picked_at)}${p.photo_path?' 📎':''}</span>${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div></div>`).join('')||'<p class="mut">No returns for this day.</p>';
+  $('rlist').innerHTML=pickups.map(p=>`<div class="stop"><div class="row sp"><span><b>↩ ${shopLink(shopKey(p),p.shop_name)}</b> <span class="mut">${fmt(p.picked_at)}${p.photo_path?' 📎':''}</span>${p.note?`<br><span class="mut">${esc(p.note)}</span>`:''}</span><button class="g s" data-pk="${p.id}">View</button></div></div>`).join('')||'<p class="mut">No returns for this day.</p>';
 }
 $('rlist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.pk)openPickup(b.dataset.pk)};
 $('rcam').onclick=()=>pickPhoto(du=>{rPhoto=du;$('rimg').src=du;$('rimg').style.display='block'});
@@ -932,6 +939,7 @@ function openStockFor(key,name){
   setTimeout(()=>$('stcard').scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
 $('stclose').onclick=()=>{stSel=null;renderStock()};
+$('stshop').onclick=()=>{if(stSel)openShop(stSel.key,stSel.name)};
 function renderStock(){
   const card=$('stcard');if(!card)return;
   if(!stSel){card.classList.add('hide');return}
@@ -1003,7 +1011,7 @@ async function syncNotes(){
   if(nSyncing)return false;nSyncing=true;let ok=true;
   try{
     for(const n of notes.filter(x=>x.dirty)){
-      const row={id:n.id,title:n.title||null,body:n.body||null,updated_at:n.updated_at};
+      const row={id:n.id,title:n.title||null,body:n.body||null,updated_at:n.updated_at};if(n.shop_key){row.shop_key=n.shop_key;row.shop_name=n.shop_name||null}
       const r=await sb.from('notes').upsert(row,{onConflict:'id'});
       if(r.error){ok=false;if(!isNet(r.error))G.notesErr=r.error.message;break}
       n.dirty=false;n.saved=true;
@@ -1026,7 +1034,7 @@ function renderNotes(){
   const list=[...notes].filter(n=>(n.title||n.body)).sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
   const when=t=>{const d=new Date(t);return dstr(d)===dstr(Date.now())?fmt(d):d.toLocaleDateString('en-NZ',{day:'numeric',month:'short'})};
   el.innerHTML=(G.notesErr?`<p class="mut">${/notes/.test(G.notesErr)?'Notes aren’t set up yet. Run the new SQL in Supabase. Notes you write are kept on this phone until then.':esc(G.notesErr)}</p>`:'')+
-    (list.map(n=>{const first=(n.body||'').split('\n').find(l=>l.trim())||'';return `<button class="nrow" data-n="${n.id}"><b>${esc(n.title||first||'Untitled')}</b><small>${esc(when(n.updated_at))}${n.title&&first?' · '+esc(first):''}${n.dirty?' · not synced yet':''}</small></button>`}).join('')||'<p class="mut">No notes yet.</p>');
+    (list.map(n=>{const first=(n.body||'').split('\n').find(l=>l.trim())||'';return `<button class="nrow" data-n="${n.id}"><b>${esc(n.title||first||'Untitled')}</b><small>${n.shop_name?'📍 '+esc(n.shop_name)+' · ':''}${esc(when(n.updated_at))}${n.title&&first?' · '+esc(first):''}${n.dirty?' · not synced yet':''}</small></button>`}).join('')||'<p class="mut">No notes yet.</p>');
 }
 $('nlist').onclick=e=>{const b=e.target.closest('button');if(b&&b.dataset.n)openNote(b.dataset.n)};
 function openNote(id){
@@ -1064,15 +1072,271 @@ $('ndel').onclick=async()=>{
 };
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&nCur&&nCur.dirty){clearTimeout(nT);syncNotes()}});
 
+/* ---------- best route (Google optimises the stop order) ---------- */
+function getHere(){return new Promise((res,rej)=>{
+  if(!navigator.geolocation)return rej(new Error('no gps'));
+  navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude}),rej,{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+})}
+async function bestOrder(items){
+  const pin=items.filter(s=>s.lat!=null&&s.lng!=null),nopin=items.filter(s=>s.lat==null||s.lng==null);
+  if(pin.length<2)return {error:'Need at least two stops with a map pin.'};
+  let here=null;try{here=await getHere()}catch(e){}
+  const base=homeBase(),origin=here||base;
+  if(!origin)return {error:'Couldn’t get your location. Allow location for this site, or set a home base in Settings.'};
+  const dest=base||origin;
+  if(pin.length<=25){
+    try{
+      await G.ready;if(!G.maps)throw new Error('no maps');
+      const {Route}=await google.maps.importLibrary('routes');
+      const res=await Route.computeRoutes({origin,destination:dest,intermediates:pin.map(p=>({location:{lat:Number(p.lat),lng:Number(p.lng)}})),travelMode:'DRIVING',optimizeWaypointOrder:true,fields:['optimizedIntermediateWaypointIndices','distanceMeters','durationMillis']});
+      const rt=res&&res.routes&&res.routes[0],idx=rt&&rt.optimizedIntermediateWaypointIndices;
+      if(idx&&idx.length===pin.length)return {list:[...idx.map(i=>pin[i]),...nopin],google:true,km:rt.distanceMeters!=null?rt.distanceMeters/1000:null,mins:rt.durationMillis!=null?Math.round(rt.durationMillis/60000):null,nopin:nopin.length,toBase:!!base};
+    }catch(e){}
+  }
+  // Fallback: nearest stop next, by straight line
+  let cur=origin;const left=[...pin],out=[];
+  while(left.length){let k=0;for(let i=1;i<left.length;i++)if(dist(cur,left[i])<dist(cur,left[k]))k=i;cur=left[k];out.push(left.splice(k,1)[0])}
+  return {list:[...out,...nopin],google:false,nopin:nopin.length,toBase:!!base};
+}
+function routeMsg(r){
+  if(r.error)return r.error;
+  let m=r.google?'Best route set'+(r.km!=null?`: ${kmf(r.km)} km, about ${r.mins} min`:'')+(r.toBase?' including back to base.':'.'):'Sorted by closest (Google route optimising unavailable).';
+  if(r.nopin)m+=' '+r.nopin+' without a map pin left at the end.';
+  return m;
+}
+function openInMaps(list){
+  if(!list.length)return;
+  const MAX=10,run=list.slice(0,MAX),pt=s=>s.lat!=null&&s.lng!=null?s.lat+','+s.lng:s.shop_name+(s.address?', '+s.address:''),last=run[run.length-1];
+  let u='https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='+encodeURIComponent(pt(last));
+  if(last.place_id&&last.lat!=null)u+='&destination_place_id='+encodeURIComponent(last.place_id);
+  if(run.length>1)u+='&waypoints='+encodeURIComponent(run.slice(0,-1).map(pt).join('|'));
+  if(list.length>MAX)toast('Google Maps takes 10 stops at a time. Opening the first 10.',7000);
+  window.open(u,'_blank','noopener');
+}
+
+/* ---------- shop page ---------- */
+const likeEsc=s=>String(s).replace(/[\\%_]/g,m=>'\\'+m);
+function byShop(q,key,name){return key&&key!==String(name||'').trim().toLowerCase()?q.eq('place_id',key):q.ilike('shop_name',likeEsc(String(name||key).trim()))}
+document.addEventListener('click',e=>{
+  const el=e.target.closest&&e.target.closest('[data-shopk]');if(!el)return;
+  e.preventDefault();e.stopPropagation();openShop(el.dataset.shopk,el.dataset.shopn||'');
+},true);
+const shopLink=(key,name)=>`<span class="shoplink" role="button" tabindex="0" data-shopk="${esc(key)}" data-shopn="${esc(name)}">${esc(name)}</span>`;
+async function openShop(key,name){
+  if(!name)name=((myShops.find(s=>shopKey(s)===key)||{}).name)||((stock.find(i=>i.shop_key===key)||{}).shop_name)||'Shop';
+  G.shopOpen={key,name};
+  $('dlgbody').onclick=null;
+  const rep=SET.app_mode==='rep';
+  $('dlgbody').innerHTML=`<div class="sset"><div class="shead"><b>${esc(name)}</b><button class="g s" id="sh-x">Close</button></div><div class="sbody">
+    <div class="slabel">Stock</div><div class="sgroup" style="padding:12px 14px" id="sh-stock"></div>
+    ${rep?'':'<div class="slabel">Deliveries</div><div class="sgroup" style="padding:4px 14px" id="sh-del"><p class="mut">Loading…</p></div><div class="slabel">Returns</div><div class="sgroup" style="padding:4px 14px" id="sh-ret"><p class="mut">Loading…</p></div>'}
+    <div class="slabel">Notes about this shop</div><div class="sgroup" style="padding:12px 14px"><div id="sh-notes"></div><textarea id="sh-nb" placeholder="Add a note about this shop" style="min-height:80px;margin-top:8px;background:var(--card)"></textarea><button class="g" id="sh-nadd" style="width:100%;margin-top:8px">Save note</button></div>
+  </div></div>`;
+  $('dlg').showModal();
+  $('sh-x').onclick=()=>{$('dlg').close();G.shopOpen=null};
+  const renderShopStock=()=>{
+    const items=stock.filter(i=>i.shop_key===key),low=lowOf(key);
+    $('sh-stock').innerHTML=(!items.length?'<span class="mut">No stock list for this shop.</span>':low.length?`<b class="need">Needs ${low.length}:</b> ${low.map(i=>esc(nf(i.target-i.have))+' × '+esc(i.item)).join(', ')}`:`<span class="mut">✓ ${items.length} item${items.length>1?'s':''}, all OK.</span>`)+
+      `<button class="g s" id="sh-st" style="display:flex;margin-top:10px">${items.length?'Open stock list':'Set up stock list'}</button>`;
+    $('sh-st').onclick=()=>{$('dlg').close();openStockFor(key,name)};
+  };
+  renderShopStock();
+  const renderShopNotes=()=>{
+    const list=notes.filter(n=>n.shop_key===key&&(n.title||n.body)).sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+    $('sh-notes').innerHTML=list.map(n=>`<button class="nrow" data-sn="${n.id}"><b>${esc(n.title||(n.body||'').split('\n')[0]||'Note')}</b><small>${esc(new Date(n.updated_at).toLocaleDateString('en-NZ',{day:'numeric',month:'short'}))}</small></button>`).join('')||'<span class="mut">No notes yet.</span>';
+  };
+  renderShopNotes();
+  $('sh-notes').onclick=e=>{const b=e.target.closest('button');if(!b||!b.dataset.sn)return;$('dlg').close();setTab('notes');openNote(b.dataset.sn)};
+  $('sh-nadd').onclick=async()=>{
+    const body=$('sh-nb').value.trim();if(!body)return;
+    const n={id:crypto.randomUUID(),title:'',body,shop_key:key,shop_name:name,updated_at:new Date().toISOString(),dirty:true};
+    notes.unshift(n);saveNL();$('sh-nb').value='';renderShopNotes();renderNotes();
+    toast(await syncNotes()?'Note saved.':'Saved on this phone. Will sync when online.');
+  };
+  if(rep)return;
+  const mStart=new Date();mStart.setDate(1);mStart.setHours(0,0,0,0);const lmStart=new Date(mStart);lmStart.setMonth(mStart.getMonth()-1);
+  const [d,cnt,p]=await Promise.all([
+    byShop(sb.from('deliveries').select('*'),key,name).order('delivered_at',{ascending:false}).limit(10),
+    byShop(sb.from('deliveries').select('delivered_at'),key,name).gte('delivered_at',lmStart.toISOString()).neq('status','failed'),
+    byShop(sb.from('pickups').select('*'),key,name).order('picked_at',{ascending:false}).limit(10)]);
+  if(!$('sh-del')||!G.shopOpen||G.shopOpen.key!==key)return;
+  const dt=t=>new Date(t).toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'});
+  if(d.error){$('sh-del').innerHTML=`<p class="mut">${isNet(d.error)?'No signal.':esc(d.error.message)}</p>`}
+  else{
+    const c=cnt.data||[],thisM=c.filter(x=>new Date(x.delivered_at)>=mStart).length;
+    $('sh-del').innerHTML=`<p class="mut" style="margin:8px 0">This month: <b>${thisM}</b> · Last month: <b>${c.length-thisM}</b></p>`+
+      ((d.data||[]).map(l=>`<div class="del"><span>${dt(l.delivered_at)} ${fmt(l.delivered_at)}<br><span class="mut">${l.status==='failed'?'Not delivered · '+esc(l.reason||''):esc(pf(l.psi))}${l.note?' · '+esc(l.note):''}</span></span></div>`).join('')||'<p class="mut">No deliveries yet.</p>');
+  }
+  if(p.error){$('sh-ret').innerHTML=''}
+  else{
+    G.shopPicks=p.data||[];
+    $('sh-ret').innerHTML=(p.data||[]).map(x=>`<div class="del"><span>${dt(x.picked_at)}${x.note?`<br><span class="mut">${esc(x.note)}</span>`:''}</span>${x.photo_path?`<button class="g s" data-ph="${x.id}">📎 Photo</button>`:''}</div>`).join('')+'<img id="sh-img" alt="Return photo" style="display:none;max-width:100%;border-radius:8px;margin:6px 0">'||'';
+    if(!(p.data||[]).length)$('sh-ret').innerHTML='<p class="mut">No returns.</p>';
+    $('sh-ret').onclick=async e=>{
+      const b=e.target.closest('button');if(!b||!b.dataset.ph)return;
+      const x=G.shopPicks.find(y=>y.id===b.dataset.ph);if(!x)return;
+      const r=await sb.storage.from('invoices').createSignedUrl(x.photo_path,3600);
+      if(r.data&&r.data.signedUrl){const im=$('sh-img');im.src=r.data.signedUrl;im.style.display='block';im.scrollIntoView({behavior:'smooth',block:'nearest'})}
+      else toast('That photo is missing.');
+    };
+  }
+}
+
+/* ---------- sales rep: weekly round ---------- */
+const DAYS=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'],DAYL=['','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const todayWd=()=>{const d=new Date().getDay();return d===0?7:d};
+let round=[],rdDay=todayWd(),rdEdit=false;
+try{round=JSON.parse(localStorage.getItem('dlround')||'[]')||[]}catch(e){}
+const saveRL=()=>{try{localStorage.setItem('dlround',JSON.stringify(round))}catch(e){}};
+async function loadRound(){
+  const r=await sb.from('round_stops').select('*').order('weekday').order('sort_order').order('created_at');
+  if(r.error){if(!isNet(r.error))G.roundErr=r.error.message;renderRound();return}
+  G.roundErr=null;round=r.data||[];saveRL();renderRound();
+}
+const dayList=wd=>round.filter(x=>x.weekday===wd).sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+function renderRound(){
+  if(!$('rdlist'))return;
+  const counts=k=>round.filter(x=>x.weekday===k).length;
+  $('rddays').innerHTML=[1,2,3,4,5,6,7].filter(k=>k<=5||counts(k)||k===rdDay).map(k=>`<button class="g s${k===rdDay?' sel':''}" data-wd="${k}">${DAYS[k]}${k===todayWd()?' •':''}${counts(k)?` · ${counts(k)}`:''}</button>`).join('');
+  $('rddayname').textContent=DAYL[rdDay];
+  const list=dayList(rdDay);
+  $('rdlist').innerHTML=(G.roundErr?`<p class="mut">${/round_stops/.test(G.roundErr)?'Rounds aren’t set up yet. Run the new SQL in Supabase.':esc(G.roundErr)}</p>`:'')+
+    (list.map((s,i)=>{
+      const key=s.shop_key,low=lowOf(key),n=stock.filter(x=>x.shop_key===key).length;
+      return `<div class="stop"><div class="row sp"><b>${i+1}. ${shopLink(key,s.shop_name)}</b>${rdEdit?`<span class="row"><button class="g s" data-rup="${s.id}">▲</button><button class="g s" data-rdn="${s.id}">▼</button><button class="g s" data-rrm="${s.id}">✕</button></span>`:''}</div>${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="row" style="flex-wrap:wrap;margin-top:8px">${low.length?`<button class="g s warn" data-stock="${esc(key)}">🔧 ${low.length} low on stock</button>`:`<button class="g s" data-stock="${esc(key)}">${n?'Stock OK':'No stock list'}</button>`}<a class="btn s" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a></div></div>`;
+    }).join('')||`<p class="mut">No shops on ${DAYL[rdDay]} yet. Add them below, or paste your list from the spreadsheet.</p>`);
+  const has=list.length;$('rdbest').classList.toggle('hide',has<2);$('rdmaps').classList.toggle('hide',!has);
+  renderRoundChips();
+}
+function renderRoundChips(){
+  const el=$('rdchips');if(!el)return;const q=($('rdfilter').value||'').trim().toLowerCase();
+  const inDay=new Set(dayList(rdDay).map(x=>x.shop_key));
+  const list=myShops.filter(s=>(!q||s.name.toLowerCase().includes(q))&&!inDay.has(shopKey(s)));
+  el.innerHTML=list.map(s=>`<button class="g s" data-rsh="${s.id}">+ ${esc(s.name)}</button>`).join('')||`<span class="mut">${myShops.length?'No more shops to add.':'Shops you search for are saved here.'}</span>`;
+}
+$('rdfilter').oninput=renderRoundChips;
+$('rddays').onclick=e=>{const b=e.target.closest('button');if(!b||!b.dataset.wd)return;rdDay=Number(b.dataset.wd);renderRound()};
+$('rdedit').onclick=()=>{rdEdit=!rdEdit;$('rdedit').textContent=rdEdit?'Done':'✎ Edit';renderRound()};
+async function addToRound(x,wd){
+  wd=wd||rdDay;const key=shopKey(x),name=x.shop_name||x.name;
+  if(round.some(r=>r.weekday===wd&&r.shop_key===key))return {dup:true};
+  const row={weekday:wd,shop_key:key,shop_name:name,place_id:x.place_id||null,address:x.address||null,lat:x.lat??null,lng:x.lng??null,sort_order:dayList(wd).length};
+  const r=await sb.from('round_stops').insert(row).select().single();
+  if(r.error)return {error:r.error};
+  round.push(r.data);saveRL();return {ok:true};
+}
+$('rdchips').onclick=async e=>{
+  const b=e.target.closest('button');if(!b||!b.dataset.rsh)return;
+  const s=myShops.find(x=>x.id===b.dataset.rsh);if(!s)return;b.disabled=true;
+  const r=await addToRound(s);
+  if(r.error)toast(isNet(r.error)?'No signal. Try again when you’re back online.':r.error.message);
+  renderRound();
+};
+$('rdlist').onclick=async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.stock){const s=round.find(x=>x.shop_key===b.dataset.stock);return openStockFor(b.dataset.stock,s?s.shop_name:'')}
+  const id=b.dataset.rup||b.dataset.rdn||b.dataset.rrm;if(!id)return;
+  const list=dayList(rdDay),i=list.findIndex(x=>x.id===id);if(i<0)return;
+  if(b.dataset.rrm){
+    if(!confirm('Take '+list[i].shop_name+' off '+DAYL[rdDay]+'?'))return;
+    round=round.filter(x=>x.id!==id);saveRL();renderRound();sb.from('round_stops').delete().eq('id',id).then(()=>{});return;
+  }
+  const j=b.dataset.rup?i-1:i+1;if(j<0||j>=list.length)return;
+  [list[i],list[j]]=[list[j],list[i]];saveRoundOrder(list);
+};
+function saveRoundOrder(list){
+  list.forEach((x,k)=>x.sort_order=k);saveRL();renderRound();
+  Promise.all(list.map((x,k)=>sb.from('round_stops').update({sort_order:k}).eq('id',x.id))).catch(()=>{});
+}
+$('rdbest').onclick=async()=>{
+  const b=$('rdbest');b.disabled=true;toast('Working out the best route…');
+  const r=await bestOrder(dayList(rdDay));b.disabled=false;
+  if(r.list)saveRoundOrder(r.list);
+  toast(routeMsg(r),8000);
+};
+$('rdmaps').onclick=()=>openInMaps(dayList(rdDay));
+function mountRound(){
+  if(!G.places||!$('rdsearch'))return;
+  const el=new G.places.PlaceAutocompleteElement({includedRegionCodes:['nz'],locationBias:{center:{lat:-39.35,lng:174.2},radius:50000}});
+  const h=async e=>{
+    try{
+      const p=e.placePrediction?e.placePrediction.toPlace():e.place;await p.fetchFields({fields:['displayName','formattedAddress','location','id']});
+      const x={name:p.displayName,address:p.formattedAddress,lat:p.location.lat(),lng:p.location.lng(),place_id:p.id};
+      const r=await addToRound(x);
+      if(r.error)return toast(r.error.message);
+      toast(r.dup?x.name+' is already on '+DAYL[rdDay]+'.':'Added '+x.name+' to '+DAYL[rdDay]+'.');
+      saveShop(x);renderRound();
+    }catch(x){toast('Couldn’t load that place. Try again.')}
+  };
+  el.addEventListener('gmp-select',h);el.addEventListener('gmp-placeselect',h);
+  $('rdsearch').innerHTML='';$('rdsearch').appendChild(el);
+}
+// Paste from a spreadsheet: one shop per line, or a grid with day names across the top.
+function parsePaste(text,defDay){
+  const lines=String(text||'').replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  if(!lines.length)return [];
+  const dayOf=c=>{const t=c.trim().toLowerCase().slice(0,3);const k=['mon','tue','wed','thu','fri','sat','sun'].indexOf(t);return k<0?0:k+1};
+  const head=lines[0].split('\t');
+  const cols=head.map(dayOf);
+  const out=[];
+  if(head.length>1&&cols.filter(Boolean).length>=2){
+    lines.slice(1).forEach(l=>l.split('\t').forEach((c,i)=>{const n=c.trim();if(n&&cols[i])out.push({name:n,wd:cols[i]})}));
+  }else{
+    lines.forEach(l=>{const n=l.split('\t').map(c=>c.trim()).find(Boolean)||'';const name=n.replace(/^\s*(\d+[.)]\s*|[-•*]\s*)/,'').trim();if(name)out.push({name,wd:defDay})});
+  }
+  const seen=new Set();return out.filter(x=>{const k=x.wd+'|'+x.name.toLowerCase();if(seen.has(k))return false;seen.add(k);return true});
+}
+async function findShop(name){
+  const n=name.toLowerCase();
+  const hit=myShops.find(s=>s.name.toLowerCase()===n)||myShops.find(s=>s.name.toLowerCase().includes(n)||n.includes(s.name.toLowerCase()));
+  if(hit)return {name:hit.name,place_id:hit.place_id,address:hit.address,lat:hit.lat,lng:hit.lng,found:'saved'};
+  try{
+    await G.ready;if(!G.places||!G.places.Place||!G.places.Place.searchByText)throw 0;
+    const {places}=await G.places.Place.searchByText({textQuery:name,fields:['displayName','formattedAddress','location','id'],locationBias:{center:{lat:-39.06,lng:174.08},radius:50000},region:'nz',maxResultCount:1});
+    const p=places&&places[0];
+    if(p)return {name:p.displayName,place_id:p.id,address:p.formattedAddress,lat:p.location.lat(),lng:p.location.lng(),found:'google',asked:name};
+  }catch(e){}
+  return {name,found:'none'};
+}
+$('rdpaste').onclick=()=>{
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">Paste your round</b><p class="mut" style="margin:4px 0 10px">Copy the shop names from your spreadsheet and paste them here, one per line. If you copy a whole week with the day names across the top row, each column goes on its own day.</p><textarea id="pp-t" style="min-height:180px" placeholder="Brixton Motors&#10;Out West Automotive&#10;…"></textarea><label class="mut" style="display:block;margin-top:8px">Add to (for a plain list)</label><select id="pp-d">${[1,2,3,4,5,6,7].map(k=>`<option value="${k}" ${k===rdDay?'selected':''}>${DAYL[k]}</option>`).join('')}</select><div id="pp-out" class="mut"></div><div class="row"><button id="pp-go" style="flex:1">Add shops</button><button class="g" id="pp-x">Close</button></div>`;
+  $('dlg').showModal();$('pp-x').onclick=()=>{$('dlg').close();renderRound()};
+  $('pp-go').onclick=async()=>{
+    const items=parsePaste($('pp-t').value,Number($('pp-d').value));
+    if(!items.length)return toast('Paste some shop names first.');
+    const b=$('pp-go');b.disabled=true;const out=$('pp-out'),res=[];
+    for(let i=0;i<items.length;i++){
+      out.textContent=`Finding ${i+1} of ${items.length}: ${items[i].name}…`;
+      const s=await findShop(items[i].name);
+      const r=await addToRound(s,items[i].wd);
+      if(r.error){res.push(`⚠️ ${esc(items[i].name)}: ${esc(r.error.message)}`);if(isNet(r.error))break;continue}
+      if(s.found!=='none'&&!r.dup)saveShop(s);
+      res.push(`${r.dup?'↺':s.found==='none'?'⚠️':'✓'} ${DAYS[items[i].wd]} · ${esc(s.name)}${s.found==='google'&&s.name.toLowerCase()!==items[i].name.toLowerCase()?` <span class="mut">(for “${esc(items[i].name)}”)</span>`:''}${s.found==='none'?' — not found on Google, added without a map pin':''}${r.dup?' — already there':''}`);
+    }
+    b.disabled=false;out.innerHTML='<div style="margin:8px 0;max-height:220px;overflow:auto">'+res.join('<br>')+'</div><p>Check the Google matches. Take off any wrong ones with ✎ Edit.</p>';
+    renderRound();
+  };
+};
+
+/* ---------- driver or rep layout ---------- */
+function applyMode(){
+  const rep=SET.app_mode==='rep';
+  const show={run:!rep,ret:!rep,round:rep,stock:true,map:!rep,log:!rep};
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('hide',!show[b.dataset.t]));
+  if(tab!=='notes'&&!show[tab])setTab(rep?'round':'run');
+}
+
 /* ---------- tabs ---------- */
 function setTab(t){
   if(tab==='notes'&&t!=='notes')closeNote();
   tab=t;document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
-  ['run','ret','stock','map','log','notes'].forEach(k=>$('v-'+k).classList.toggle('hide',k!==t));
+  ['round','run','ret','stock','map','log','notes'].forEach(k=>$('v-'+k).classList.toggle('hide',k!==t));
   $('notesbtn').classList.toggle('on',t==='notes');
   if(t==='map')renderMap();
   if(t==='ret')renderRet();
-  if(t==='stock'){renderStockShops();renderStock()}
+  if(t==='stock'){renderStockShops();renderStock();loadStock()}
+  if(t==='round'){renderRound();loadRound();loadStock()}
   if(t==='notes'){renderNotes();loadNotes()}
   window.scrollTo(0,0);
 }

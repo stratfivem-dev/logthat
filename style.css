@@ -122,3 +122,15 @@ a.btn.s{min-height:34px;padding:0 12px;font-size:14px;border-radius:999px}
 .frqsub{padding:0 0 6px 32px}
 .frqsub select{margin:0}
 #rddays{gap:6px}
+
+/* admin */
+.adco{font-size:18px!important;letter-spacing:0!important;text-transform:none!important;color:var(--ink)!important}
+.adbr{border-top:1px solid var(--line);padding:10px 0}
+.adbr summary{cursor:pointer;padding:6px 0;list-style:none}
+.adbr summary::-webkit-details-marker{display:none}
+.adbr summary::before{content:"▸ ";color:var(--mut)}
+.adbr[open] summary::before{content:"▾ "}
+.adp{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding:10px 0}
+.adadd{background:var(--bg);border-radius:12px;padding:12px;margin-top:10px}
+.adadd input,.adadd select{background:var(--card)}
+.adadd>b{display:block;margin-bottom:8px}

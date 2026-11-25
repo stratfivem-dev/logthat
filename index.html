@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=14">
+<link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 <main>
@@ -19,10 +19,11 @@
     <input id="em" type="email" placeholder="Email" autocomplete="username">
     <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
     <button id="loginBtn" style="width:100%">Sign in</button>
+    <p class="mut" style="margin:12px 0 0">Forgot your password? Ask your manager to email you a new link.</p>
   </div>
 
   <div id="app" class="hide">
-    <div class="top"><h1>Delivery Log</h1><span class="mut" id="pend"></span><button class="g s" id="notesbtn">📝 Notes</button><button class="g s" id="setbtn">Settings</button></div>
+    <div class="top"><h1>Delivery Log</h1><span class="mut" id="pend"></span><button class="g s hide" id="admbtn">Admin</button><button class="g s" id="notesbtn">📝 Notes</button><button class="g s" id="setbtn">Settings</button></div>
 
     <div id="keybox" class="card hide">
       <b>Add your Google Maps key</b>
@@ -119,6 +120,8 @@
       </div>
     </section>
 
+    <section id="v-admin" class="hide"><div id="admbody"></div></section>
+
     <section id="v-map" class="hide">
       <div class="row sp" style="margin-bottom:8px"><span class="mut">Day</span><input class="dayin" type="date" style="width:auto;margin:0"></div>
       <div id="map"></div>
@@ -141,6 +144,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// Came from an emailed 'set your password' link?
+const AUTHLINK=/type=(recovery|invite|signup|magiclink)/.test(location.hash);
 // Put your Google key between the quotes to build it into the site (then nobody has to paste it on their phone).
 const GOOGLE_KEY='';
 // Key order: built in > shared by your branch (from Supabase) > pasted on this phone
@@ -189,10 +194,14 @@ document.addEventListener('click',e=>{
 function addField(c,cls,v){const i=document.createElement('input');i.className=cls;i.placeholder='PSI';i.inputMode='decimal';if(v!=null)i.value=v;c.appendChild(i);return i}
 
 /* ---------- auth ---------- */
-async function boot(){const {data}=await sb.auth.getSession();data.session?start():$('login').classList.remove('hide')}
+async function boot(){
+  const {data}=await sb.auth.getSession();
+  if(data.session){start();if(AUTHLINK){history.replaceState(null,'',location.pathname);setTimeout(()=>setPassword(true),700)}}
+  else{$('login').classList.remove('hide');if(AUTHLINK)toast('That link has expired or was already used. Ask for a new one.',10000)}
+}
 $('loginBtn').onclick=async()=>{const {error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)toast(error.message);else{$('login').classList.add('hide');start()}};
 async function start(){
-  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();applyMode();renderShops();loadShops();loadSettings();listen();loadStock();loadNotes();loadRound();
+  $('app').classList.remove('hide');$('nav').classList.remove('hide');updPend();applyMode();checkAdmin();renderShops();loadShops();loadSettings();listen();loadStock();loadNotes();loadRound();
   document.querySelectorAll('.dayin').forEach(i=>{i.value=day;i.onchange=()=>{day=i.value;document.querySelectorAll('.dayin').forEach(x=>x.value=day);loadLogs()}});
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   window.addEventListener('online',()=>{flush();syncNotes()});setInterval(flush,30000);
@@ -545,6 +554,7 @@ function openSettings(){
   $('dlgbody').innerHTML=`<div class="sset"><div class="shead"><b>Settings</b><button class="g s" id="s-x">Close</button></div><div class="sbody">
   <div class="slabel">You</div><div class="sgroup">
    ${row('Name','Shown in Teams messages',`<input class="sin" id="s-name" value="${esc(SET.display_name)}" placeholder="Optional">`)}
+   ${row('Password','',`<button class="g s" id="s-pw">Change</button>`)}
    ${row('I use this app as','Sales reps get a weekly round instead of deliveries',`<select class="sin" id="s-mode">${opt('driver','Delivery driver',SET.app_mode!=='rep')}${opt('rep','Sales rep',SET.app_mode==='rep')}</select>`)}
    ${row('Time zone','For emails and Teams times',`<select class="sin" id="s-tz">${zones.map(z=>opt(z,z.replace('_',' '),z===SET.timezone)).join('')}</select>`)}
   </div>
@@ -591,6 +601,7 @@ function openSettings(){
   $('s-x').onclick=()=>$('dlg').close();
   $('s-save').onclick=()=>saveSettings(true);
   $('s-out').onclick=signOut;
+  $('s-pw').onclick=()=>setPassword(false);
   $('s-test').onclick=async()=>{
     if(!$('s-hook').value.trim())return toast('Paste your Teams workflow address first.');
     if(!await saveSettings(false))return;
@@ -1391,15 +1402,143 @@ function applyMode(){
   const rep=SET.app_mode==='rep';
   const show={run:!rep,ret:!rep,round:rep,stock:true,map:!rep,log:!rep};
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('hide',!show[b.dataset.t]));
-  if(tab!=='notes'&&!show[tab])setTab(rep?'round':'run');
+  if(tab!=='notes'&&tab!=='admin'&&!show[tab])setTab(rep?'round':'run');
+}
+
+/* ---------- admin page (super-admin, company admin, branch manager) ---------- */
+let ADM=null,admLevel=null;const admOpen=new Set();
+const ROLE_L={driver:'Driver',rep:'Sales rep',counter:'Counter',manager:'Branch manager'};
+async function checkAdmin(){
+  try{const r=await sb.rpc('my_admin_level');admLevel=r.error?null:r.data}catch(e){admLevel=null}
+  $('admbtn').classList.toggle('hide',!admLevel);
+}
+async function adm(action,body){
+  const {data,error}=await sb.functions.invoke('admin',{body:{action,...(body||{})}});
+  if(error){let m=error.message||'failed';try{const t=await error.context.json();m=t.error||m}catch(e){try{m=(await error.context.text()).slice(0,200)||m}catch(x){}}throw new Error(m)}
+  if(data&&data.error)throw new Error(data.error);
+  return data;
+}
+async function loadAdmin(){
+  $('admbody').innerHTML='<div class="card"><p class="mut">Loading…</p></div>';
+  try{ADM=await adm('overview');renderAdmin()}
+  catch(e){$('admbody').innerHTML=`<div class="card"><b>Admin</b><p class="mut">${isNet(e)?'No signal.':esc(e.message)}</p><p class="mut">If this says the function wasn’t found, deploy the “admin” function in Supabase first.</p></div>`}
+}
+function askText(title,value,ph){return new Promise(res=>{
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">${esc(title)}</b><input id="at-v" value="${esc(value||'')}" placeholder="${esc(ph||'')}" style="margin-top:12px" autocomplete="off"><div class="row"><button id="at-ok" style="flex:1">Save</button><button class="g" id="at-x">Cancel</button></div>`;
+  $('dlg').showModal();$('at-v').focus();
+  $('at-x').onclick=()=>{$('dlg').close();res(null)};
+  $('at-ok').onclick=()=>{const v=$('at-v').value;$('dlg').close();res(v)};
+})}
+function renderAdmin(){
+  const D=ADM;if(!D)return;
+  const canCo=cid=>D.level==='super'||(D.level==='company'&&D.company_admins.some(a=>a.company_id===cid&&a.user_id===D.me));
+  const lvl={super:'Super-admin',company:'Company admin',manager:'Branch manager'}[D.level]||'';
+  const person=m=>{
+    const coAdm=D.company_admins.some(a=>a.user_id===m.user_id);
+    return `<div class="adp"><div class="stn"><b>${esc(m.display_name||m.email)}</b><small>${esc(m.email)} · ${ROLE_L[m.role]||esc(m.role)}${coAdm?' · ★ company admin':''}${m.banned?' · <span class="need">access off</span>':''}${!m.signed_in&&!m.banned?' · not signed in yet':''}${m.user_id===D.me?' · you':''}</small></div><button class="g s" data-a="person" data-team="${m.team_id}" data-user="${m.user_id}">Manage</button></div>`;
+  };
+  const branch=(b,co)=>{
+    const mem=D.members.filter(m=>m.team_id===b.id).sort((x,y)=>(x.display_name||x.email).localeCompare(y.display_name||y.email));
+    return `<details class="adbr" data-br="${b.id}" ${admOpen.has(b.id)?'open':''}><summary><b>${esc(b.name)}</b> <span class="mut">· ${mem.length} ${mem.length===1?'person':'people'}${b.has_key?'':' · no Google key'}</span></summary>
+      <div class="row" style="flex-wrap:wrap;margin:10px 0"><button class="g s" data-a="key" data-id="${b.id}">🔑 ${b.has_key?'Change':'Set'} Google key</button>${canCo(co)?`<button class="g s" data-a="rnbr" data-id="${b.id}">Rename</button>`:''}</div>
+      ${mem.map(person).join('')||'<p class="mut">Nobody yet.</p>'}
+      <div class="adadd"><b>Add a person</b>
+        <input id="np-n-${b.id}" placeholder="Name">
+        <input id="np-e-${b.id}" type="email" placeholder="Email" autocomplete="off">
+        <select id="np-r-${b.id}">${Object.entries(ROLE_L).filter(([k])=>k!=='manager'||canCo(co)).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+        <input id="np-p-${b.id}" type="text" placeholder="Password (optional)" autocomplete="new-password">
+        <p class="mut" style="margin:0 0 8px">Leave the password blank to email them a link to set their own.</p>
+        <button data-a="add" data-id="${b.id}" style="width:100%">Add person</button></div>
+    </details>`;
+  };
+  let h=`<div class="card"><div class="row sp"><b>Admin</b><span class="mut">${lvl}</span></div><p class="mut" style="margin:6px 0 0">Add people, branches${D.level==='super'?' and companies':''}. Customers never get access.</p></div>`;
+  if(D.level==='super')h+=`<div class="card"><b>New company</b><div class="row" style="margin-top:8px"><input id="ad-co" placeholder="Company name" style="margin:0"><button data-a="newco">Add</button></div></div>`;
+  const cos=[...D.companies];
+  if(D.level==='super'&&D.branches.some(b=>!b.company_id))cos.push({id:null,name:'No company'});
+  h+=cos.map(c=>{
+    const brs=D.branches.filter(b=>(b.company_id||null)===c.id),admins=D.company_admins.filter(a=>a.company_id===c.id);
+    return `<div class="card"><div class="row sp"><b class="adco">${esc(c.name)}</b>${c.id&&canCo(c.id)?`<button class="g s" data-a="rnco" data-id="${c.id}">Rename</button>`:''}</div>
+      ${c.id?`<p class="mut" style="margin:6px 0 4px">Company admins: ${admins.map(a=>esc(a.email)).join(', ')||'none yet'}</p>`:''}
+      ${brs.map(b=>branch(b,c.id)).join('')||'<p class="mut">No branches yet.</p>'}
+      ${c.id&&canCo(c.id)?`<div class="row" style="margin-top:12px"><input id="ad-br-${c.id}" placeholder="New branch name" style="margin:0"><button class="g" data-a="newbr" data-id="${c.id}">Add branch</button></div>`:''}
+    </div>`;
+  }).join('');
+  $('admbody').innerHTML=h;
+}
+$('admbody').addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.br){d.open?admOpen.add(d.dataset.br):admOpen.delete(d.dataset.br)}},true);
+async function admDo(btn,fn,okMsg){
+  if(btn)btn.disabled=true;
+  try{const r=await fn();if(okMsg)toast(typeof okMsg==='function'?okMsg(r):okMsg,8000);await loadAdmin();return r}
+  catch(e){toast(isNet(e)?'No signal. Try again.':e.message,9000)}
+  finally{if(btn)btn.disabled=false}
+}
+$('admbody').onclick=async e=>{
+  const b=e.target.closest('button');if(!b||!b.dataset.a)return;
+  const a=b.dataset.a,id=b.dataset.id;
+  if(a==='newco'){const name=$('ad-co').value.trim();if(!name)return toast('Type the company name.');return admDo(b,()=>adm('create_company',{name}),'Company added.')}
+  if(a==='newbr'){const name=$('ad-br-'+id).value.trim();if(!name)return toast('Type the branch name.');return admDo(b,async()=>{const r=await adm('create_branch',{company_id:id,name});admOpen.add(r.id);return r},'Branch added.')}
+  if(a==='rnco'){const c=ADM.companies.find(x=>x.id===id);const v=await askText('Rename company',c&&c.name);if(v&&v.trim())admDo(null,()=>adm('rename',{kind:'company',id,name:v}),'Renamed.');return}
+  if(a==='rnbr'){const x=ADM.branches.find(y=>y.id===id);const v=await askText('Rename branch',x&&x.name);if(v&&v.trim())admDo(null,()=>adm('rename',{kind:'branch',id,name:v}),'Renamed.');return}
+  if(a==='key'){const v=await askText('Google key for this branch','', 'Paste the key (blank removes it)');if(v!==null)admDo(null,()=>adm('set_branch_key',{team_id:id,key:v}),v.trim()?'Key saved. Everyone in the branch gets it next time they open the app.':'Key removed.');return}
+  if(a==='add'){
+    const body={team_id:id,name:$('np-n-'+id).value.trim(),email:$('np-e-'+id).value.trim(),role:$('np-r-'+id).value,password:$('np-p-'+id).value};
+    if(!body.email)return toast('Type their email.');
+    return admDo(b,()=>adm('add_person',body),r=>r.emailed?`Added. ${body.email} has been emailed a link to set their password.`:r.created?'Added. They can sign in now with that password.':'Added to this branch. They already had a login.');
+  }
+  if(a==='person')return managePerson(b.dataset.team,b.dataset.user);
+};
+function managePerson(teamId,userId){
+  const D=ADM,m=D.members.find(x=>x.team_id===teamId&&x.user_id===userId);if(!m)return;
+  const br=D.branches.find(x=>x.id===teamId),coId=br&&br.company_id,isCoAdm=D.company_admins.some(a=>a.company_id===coId&&a.user_id===userId);
+  const full=D.level==='super'||(D.level==='company'&&D.company_admins.some(a=>a.company_id===coId&&a.user_id===D.me)),me=userId===D.me;
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">${esc(m.display_name||m.email)}</b><div class="mut" style="margin:2px 0 12px">${esc(m.email)}${m.banned?' · access off':''}</div>
+    <label class="mut">Name</label><input id="mp-n" value="${esc(m.display_name||'')}">
+    <label class="mut">Role</label><select id="mp-r">${Object.entries(ROLE_L).filter(([k])=>k!=='manager'||full||m.role==='manager').map(([k,v])=>`<option value="${k}" ${k===m.role?'selected':''}>${v}</option>`).join('')}</select>
+    <label class="mut">Branch</label><select id="mp-b">${D.branches.map(x=>`<option value="${x.id}" ${x.id===teamId?'selected':''}>${esc(x.name)}${D.companies.length>1?' · '+esc((D.companies.find(c=>c.id===x.company_id)||{}).name||''):''}</option>`).join('')}</select>
+    <button id="mp-save" style="width:100%">Save</button>
+    <div class="row" style="flex-wrap:wrap;margin-top:12px">
+      <button class="g s" id="mp-reset">✉️ Email a password link</button>
+      ${me?'':`<button class="g s" id="mp-acc">${m.banned?'Turn access back on':'Turn access off'}</button><button class="g s" id="mp-rm">Remove from branch</button>`}
+      ${D.level==='super'&&coId?`<button class="g s" id="mp-ca">${isCoAdm?'Remove company admin':'★ Make company admin'}</button>`:''}
+    </div>
+    <button class="g" id="mp-x" style="width:100%;margin-top:12px">Close</button>`;
+  $('dlg').showModal();
+  $('mp-x').onclick=()=>$('dlg').close();
+  $('mp-save').onclick=()=>{const body={team_id:teamId,user_id:userId,display_name:$('mp-n').value,role:$('mp-r').value};if($('mp-b').value!==teamId)body.move_to=$('mp-b').value;$('dlg').close();admDo(null,()=>adm('update_member',body),'Saved.')};
+  $('mp-reset').onclick=()=>{$('dlg').close();admDo(null,()=>adm('send_reset',{user_id:userId,name:m.display_name||''}),'Password link emailed to '+m.email+'.')};
+  if($('mp-acc'))$('mp-acc').onclick=()=>{if(!m.banned&&!confirm('Turn off access for '+(m.display_name||m.email)+'? They won’t be able to sign in. Their logs stay.'))return;$('dlg').close();admDo(null,()=>adm('set_access',{user_id:userId,on:m.banned}),m.banned?'Access turned back on.':'Access turned off.')};
+  if($('mp-rm'))$('mp-rm').onclick=()=>{if(!confirm('Remove '+(m.display_name||m.email)+' from '+(br?br.name:'this branch')+'? Their login stays; they just leave the branch.'))return;$('dlg').close();admDo(null,()=>adm('remove_member',{team_id:teamId,user_id:userId}),'Removed from branch.')};
+  if($('mp-ca'))$('mp-ca').onclick=()=>{$('dlg').close();admDo(null,()=>adm('set_company_admin',{company_id:coId,user_id:userId,on:!isCoAdm}),isCoAdm?'No longer a company admin.':'Now a company admin.')};
+}
+$('admbtn').onclick=()=>setTab(tab==='admin'?(SET.app_mode==='rep'?'round':'run'):'admin');
+
+/* ---------- set / change password ---------- */
+function setPassword(welcome){
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">${welcome?'Welcome! Set your password':'Change password'}</b><p class="mut" style="margin:4px 0 12px">At least 8 characters.</p><input id="pw1" type="password" placeholder="New password" autocomplete="new-password"><input id="pw2" type="password" placeholder="Type it again" autocomplete="new-password"><div class="row"><button id="pw-ok" style="flex:1">Save password</button>${welcome?'':'<button class="g" id="pw-x">Cancel</button>'}</div>`;
+  $('dlg').showModal();
+  if($('pw-x'))$('pw-x').onclick=()=>$('dlg').close();
+  $('pw-ok').onclick=async()=>{
+    const a=$('pw1').value,b=$('pw2').value;
+    if(a.length<8)return toast('Use at least 8 characters.');
+    if(a!==b)return toast('The two passwords don’t match.');
+    $('pw-ok').disabled=true;
+    const {error}=await sb.auth.updateUser({password:a});
+    $('pw-ok').disabled=false;
+    if(error)return toast(error.message,9000);
+    $('dlg').close();toast('Password saved.'+(welcome?' Use it with your email to sign in next time.':''),7000);
+  };
 }
 
 /* ---------- tabs ---------- */
 function setTab(t){
   if(tab==='notes'&&t!=='notes')closeNote();
   tab=t;document.querySelectorAll('.nav button').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
-  ['round','run','ret','stock','map','log','notes'].forEach(k=>$('v-'+k).classList.toggle('hide',k!==t));
-  $('notesbtn').classList.toggle('on',t==='notes');
+  ['round','run','ret','stock','map','log','notes','admin'].forEach(k=>$('v-'+k).classList.toggle('hide',k!==t));
+  $('notesbtn').classList.toggle('on',t==='notes');$('admbtn').classList.toggle('on',t==='admin');
+  if(t==='admin')loadAdmin();
   if(t==='map')renderMap();
   if(t==='ret')renderRet();
   if(t==='stock'){renderStockShops();renderStock();loadStock()}

@@ -456,7 +456,9 @@ let myShops=[],editShops=false;
 try{myShops=JSON.parse(localStorage.getItem('dlshops')||'[]')}catch(e){}
 async function loadShops(){
   const r=await sb.from('shops').select('*').order('name');if(r.error)return;
-  myShops=r.data||[];try{localStorage.setItem('dlshops',JSON.stringify(myShops))}catch(e){}renderShops();if(typeof renderRoundChips==='function')renderRoundChips();
+  // Shops are shared across the branch: several people may have saved the same one, so show it once
+  const seen=new Map();(r.data||[]).forEach(x=>{const o=seen.get(x.key);if(!o||(ME&&x.user_id===ME&&o.user_id!==ME))seen.set(x.key,x)});
+  myShops=[...seen.values()].sort((a,b)=>a.name.localeCompare(b.name));try{localStorage.setItem('dlshops',JSON.stringify(myShops))}catch(e){}renderShops();if(typeof renderRoundChips==='function')renderRoundChips();
 }
 async function saveShop(x){
   const name=x.name,key=x.place_id||String(name).trim().toLowerCase();
@@ -474,7 +476,7 @@ function renderShops(){
 async function shopTap(e,mode){
   const b=e.target.closest('button');if(!b||!b.dataset.sh)return;
   const s=myShops.find(x=>x.id===b.dataset.sh);if(!s)return;
-  if(editShops){if(confirm('Remove '+s.name+' from your list?')){await sb.from('shops').delete().eq('id',s.id);loadShops()}return}
+  if(editShops){if(confirm('Remove '+s.name+' from the branch shop list? It goes for everyone in your branch. Their logs and stock stay.')){await sb.from('shops').delete().eq('key',s.key);loadShops()}return}
   if(mode==='add'){
     const r=await sb.from('plan_stops').insert({shop_name:s.name,place_id:s.place_id,address:s.address,lat:s.lat,lng:s.lng,psi:[],sort_order:stops.length}).select().single();
     if(r.error)return toast(isNet(r.error)?'No signal. Try again when you’re back online.':r.error.message);

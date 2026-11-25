@@ -1,4 +1,4 @@
-const C = 'dl-v16';
+const C = 'dl-v17';
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
 self.addEventListener('fetch', (e) => {

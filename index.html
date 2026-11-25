@@ -143,7 +143,16 @@
 <script>
 // Put your Google key between the quotes to build it into the site (then nobody has to paste it on their phone).
 const GOOGLE_KEY='';
-const gKey=()=>GOOGLE_KEY||localStorage.getItem('gmkey');
+// Key order: built in > shared by your branch (from Supabase) > pasted on this phone
+const gKey=()=>GOOGLE_KEY||localStorage.getItem('gmkey_team')||localStorage.getItem('gmkey');
+async function loadTeamKey(){
+  try{
+    const r=await sb.from('team_settings').select('google_key').not('google_key','is',null).limit(1);
+    if(r.error){if(!isNet(r.error))localStorage.removeItem('gmkey_team');return}
+    const k=r.data&&r.data[0]&&r.data[0].google_key;
+    if(k)localStorage.setItem('gmkey_team',k);else localStorage.removeItem('gmkey_team');
+  }catch(e){}
+}
 const sb=supabase.createClient('https://yznhzcqqtufxkdkxxqmv.supabase.co','sb_publishable__PLrzW0x4Gqd8fq1gFwPIw_fgK-CWbY');
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -188,7 +197,7 @@ async function start(){
   if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
   window.addEventListener('online',()=>{flush();syncNotes()});setInterval(flush,30000);
   await flush();await Promise.all([loadStops(),loadLogs()]);
-  setupMaps();
+  await loadTeamKey();setupMaps();
 }
 
 /* ---------- data ---------- */
@@ -560,7 +569,7 @@ function openSettings(){
    ${row('Count the drive back to base','',sw('s-bret',SET.base_return!==false))}
   </div>
   <div class="slabel">This device</div><div class="sgroup">
-   ${row('Google key',gKey()?'A key is saved on this device':'Needed for search and the map',`<input class="sin" id="s-gkey" placeholder="${gKey()?'Replace key':'Paste key'}" autocomplete="off">`)}
+   ${row('Google key',localStorage.getItem('gmkey_team')?'Shared by your branch. Nothing to do.':gKey()?'A key is saved on this device':'Needed for search and the map',`<input class="sin" id="s-gkey" placeholder="${gKey()?'Replace key':'Paste key'}" autocomplete="off">`)}
   </div></div>
   <div class="sfoot"><button id="s-save" style="flex:1">Save</button><button class="g" id="s-out">Sign out</button></div></div>`;
   $('dlg').showModal();

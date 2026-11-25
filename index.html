@@ -10,7 +10,7 @@
 <meta name="theme-color" content="#141516">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="style.css?v=13">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 <main>
@@ -85,7 +85,7 @@
         <div id="rdchips" class="row" style="flex-wrap:wrap;max-height:190px;overflow:auto;margin-bottom:10px"></div>
         <div class="mut" style="margin:0 0 6px">Or search</div>
         <div id="rdsearch"><input placeholder="Search needs your Google key" disabled></div>
-        <button class="g" id="rdpaste" style="width:100%">📋 Paste from spreadsheet</button>
+        <button class="g" id="rdpaste" style="width:100%">📋 Import a list</button>
       </div>
     </section>
 
@@ -1185,28 +1185,82 @@ async function openShop(key,name){
 /* ---------- sales rep: weekly round ---------- */
 const DAYS=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'],DAYL=['','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const todayWd=()=>{const d=new Date().getDay();return d===0?7:d};
-let round=[],rdDay=todayWd(),rdEdit=false;
+let round=[],rdDay=todayWd(),rdWeek=0,rdEdit=false,rdDate='';
+// Visit frequency: weekly, fortnightly (anchor = a date it's due) or monthly (nth weekday of the month, 5 = last)
+function mondayOf(d){const x=new Date(d);x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7));return x}
+const rdDateOf=(wk,wd)=>{const m=mondayOf(Date.now());m.setDate(m.getDate()+(wk??rdWeek)*7+(wd??rdDay)-1);return m};
+const nthOf=d=>Math.ceil(d.getDate()/7);
+const isLastOf=d=>{const n=new Date(d);n.setDate(d.getDate()+7);return n.getMonth()!==d.getMonth()};
+function dueOn(s,date){
+  const f=s.freq||'weekly';
+  if(f==='fortnightly'){if(!s.anchor)return true;const w=Math.round((mondayOf(date)-mondayOf(new Date(s.anchor+'T00:00:00')))/(7*864e5));return ((w%2)+2)%2===0}
+  if(f==='monthly'){const n=Number(s.month_week)||1;return n===5?isLastOf(date):nthOf(date)===n}
+  return true;
+}
+const NTH=['','1st','2nd','3rd','4th','Last'];
+const freqLabel=s=>s.freq==='fortnightly'?'Every 2nd week':s.freq==='monthly'?`${NTH[Number(s.month_week)||1]} ${DAYS[s.weekday]} of the month`:'';
+const dueList=()=>{const d=rdDateOf();return dayList(rdDay).filter(x=>dueOn(x,d))};
+// Open on today's shops. On a weekend with nothing planned, show Monday. Re-checks when the app is reopened on a new day.
+function rdToday(force){
+  const d=dstr(Date.now());if(!force&&d===rdDate)return;rdDate=d;
+  let wd=todayWd();rdWeek=0;
+  if(wd>5&&!dayList(wd).some(x=>dueOn(x,rdDateOf(0,wd)))){wd=1;rdWeek=1}
+  rdDay=wd;
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&SET.app_mode==='rep'){const d=rdDate;rdToday();if(d!==rdDate)renderRound()}});
 try{round=JSON.parse(localStorage.getItem('dlround')||'[]')||[]}catch(e){}
 const saveRL=()=>{try{localStorage.setItem('dlround',JSON.stringify(round))}catch(e){}};
 async function loadRound(){
   const r=await sb.from('round_stops').select('*').order('weekday').order('sort_order').order('created_at');
   if(r.error){if(!isNet(r.error))G.roundErr=r.error.message;renderRound();return}
-  G.roundErr=null;round=r.data||[];saveRL();renderRound();
+  G.roundErr=null;round=r.data||[];saveRL();if(!G.rdLoaded){G.rdLoaded=true;rdToday(true)}renderRound();
 }
 const dayList=wd=>round.filter(x=>x.weekday===wd).sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
 function renderRound(){
   if(!$('rdlist'))return;
-  const counts=k=>round.filter(x=>x.weekday===k).length;
-  $('rddays').innerHTML=[1,2,3,4,5,6,7].filter(k=>k<=5||counts(k)||k===rdDay).map(k=>`<button class="g s${k===rdDay?' sel':''}" data-wd="${k}">${DAYS[k]}${k===todayWd()?' •':''}${counts(k)?` · ${counts(k)}`:''}</button>`).join('');
-  $('rddayname').textContent=DAYL[rdDay];
-  const list=dayList(rdDay);
+  const date=rdDateOf(),dn=k=>rdDateOf(rdWeek,k),due=k=>dayList(k).filter(x=>dueOn(x,dn(k))).length;
+  const mon=rdDateOf(rdWeek,1),sun=rdDateOf(rdWeek,7),md=d=>d.toLocaleDateString('en-NZ',{day:'numeric',month:'short'});
+  const isToday=k=>rdWeek===0&&k===todayWd();
+  $('rddays').innerHTML=`<div class="row sp" style="width:100%"><button class="g s" data-wk="-1" aria-label="Previous week">◀</button><span class="mut">${rdWeek===0?'This week':rdWeek===1?'Next week':rdWeek===-1?'Last week':'Week of '+md(mon)} · ${md(mon)} – ${md(sun)}</span><button class="g s" data-wk="1" aria-label="Next week">▶</button></div>`+
+    [1,2,3,4,5,6,7].filter(k=>k<=5||dayList(k).length||k===rdDay).map(k=>`<button class="g s${k===rdDay?' sel':''}" data-wd="${k}">${DAYS[k]} ${dn(k).getDate()}${isToday(k)?' •':''}${due(k)?` · ${due(k)}`:''}</button>`).join('');
+  $('rddayname').textContent=DAYL[rdDay]+'s';
+  const all=dayList(rdDay),list=rdEdit?all:all.filter(x=>dueOn(x,date)),skip=all.filter(x=>!dueOn(x,date));
   $('rdlist').innerHTML=(G.roundErr?`<p class="mut">${/round_stops/.test(G.roundErr)?'Rounds aren’t set up yet. Run the new SQL in Supabase.':esc(G.roundErr)}</p>`:'')+
+    `<p class="mut" style="margin:0 0 4px">${date.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</p>`+
     (list.map((s,i)=>{
-      const key=s.shop_key,low=lowOf(key),n=stock.filter(x=>x.shop_key===key).length;
-      return `<div class="stop"><div class="row sp"><b>${i+1}. ${shopLink(key,s.shop_name)}</b>${rdEdit?`<span class="row"><button class="g s" data-rup="${s.id}">▲</button><button class="g s" data-rdn="${s.id}">▼</button><button class="g s" data-rrm="${s.id}">✕</button></span>`:''}</div>${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="row" style="flex-wrap:wrap;margin-top:8px">${low.length?`<button class="g s warn" data-stock="${esc(key)}">🔧 ${low.length} low on stock</button>`:`<button class="g s" data-stock="${esc(key)}">${n?'Stock OK':'No stock list'}</button>`}<a class="btn s" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a></div></div>`;
-    }).join('')||`<p class="mut">No shops on ${DAYL[rdDay]} yet. Add them below, or paste your list from the spreadsheet.</p>`);
-  const has=list.length;$('rdbest').classList.toggle('hide',has<2);$('rdmaps').classList.toggle('hide',!has);
+      const key=s.shop_key,low=lowOf(key),n=stock.filter(x=>x.shop_key===key).length,fl=freqLabel(s),nd=!dueOn(s,date);
+      return `<div class="stop${rdEdit&&nd?' notdue':''}"><div class="row sp"><b>${i+1}. ${shopLink(key,s.shop_name)}</b>${rdEdit?`<span class="row"><button class="g s" data-rup="${s.id}">▲</button><button class="g s" data-rdn="${s.id}">▼</button><button class="g s" data-rrm="${s.id}">✕</button></span>`:''}</div>${fl||nd?`<div class="mut">${fl?'🔁 '+esc(fl):''}${rdEdit&&nd?' · not due this week':''}</div>`:''}${s.address?`<div class="mut">${esc(s.address)}</div>`:''}<div class="row" style="flex-wrap:wrap;margin-top:8px">${rdEdit?`<button class="g s" data-rfq="${s.id}">🔁 ${fl?'Change':'Weekly · change'}</button>`:`${low.length?`<button class="g s warn" data-stock="${esc(key)}">🔧 ${low.length} low on stock</button>`:`<button class="g s" data-stock="${esc(key)}">${n?'Stock OK':'No stock list'}</button>`}<a class="btn s" href="${navUrl(s)}" target="_blank" rel="noopener">🧭</a>`}</div></div>`;
+    }).join('')||`<p class="mut">${all.length?'Nothing due on this '+DAYL[rdDay]+'.':'No shops on '+DAYL[rdDay]+'s yet. Add them below.'}</p>`)+
+    (!rdEdit&&skip.length?`<p class="mut" style="margin-top:8px">Not due this ${DAYL[rdDay]}: ${skip.map(x=>esc(x.shop_name)+' ('+esc(freqLabel(x).toLowerCase())+')').join(', ')}</p>`:'');
+  const has=rdEdit?0:list.length;$('rdbest').classList.toggle('hide',has<2);$('rdmaps').classList.toggle('hide',!has);
   renderRoundChips();
+}
+function openFreq(id){
+  const s=round.find(x=>x.id===id);if(!s)return;
+  const d=rdDateOf(),d2=new Date(d);d2.setDate(d.getDate()+7);
+  const thisDue=s.freq==='fortnightly'?dueOn(s,d):true;
+  const md=x=>x.toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'});
+  const cur=s.freq||'weekly',nth=Number(s.month_week)||Math.min(nthOf(d),4);
+  $('dlgbody').onclick=null;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">How often?</b><div class="mut" style="margin:2px 0 12px">${esc(s.shop_name)} · ${DAYL[s.weekday]}s</div>
+    <label class="frq"><input type="radio" name="fq" value="weekly" ${cur==='weekly'?'checked':''}> Every week</label>
+    <label class="frq"><input type="radio" name="fq" value="fortnightly" ${cur==='fortnightly'?'checked':''}> Every 2nd week</label>
+    <div class="frqsub" data-for="fortnightly"><select id="fq-a"><option value="${dstr(d)}" ${thisDue?'selected':''}>Next due ${md(d)}</option><option value="${dstr(d2)}" ${thisDue?'':'selected'}>Next due ${md(d2)}</option></select></div>
+    <label class="frq"><input type="radio" name="fq" value="monthly" ${cur==='monthly'?'checked':''}> Once a month</label>
+    <div class="frqsub" data-for="monthly"><select id="fq-n">${[1,2,3,4,5].map(k=>`<option value="${k}" ${k===nth?'selected':''}>${NTH[k]} ${DAYL[s.weekday]} of the month</option>`).join('')}</select></div>
+    <div class="row" style="margin-top:12px"><button id="fq-ok" style="flex:1">Save</button><button class="g" id="fq-x">Cancel</button></div>`;
+  $('dlg').showModal();
+  const sync=()=>{const v=(document.querySelector('input[name=fq]:checked')||{}).value;document.querySelectorAll('.frqsub').forEach(el=>el.classList.toggle('hide',el.dataset.for!==v))};
+  document.querySelectorAll('input[name=fq]').forEach(x=>x.onchange=sync);sync();
+  $('fq-x').onclick=()=>$('dlg').close();
+  $('fq-ok').onclick=async()=>{
+    const v=document.querySelector('input[name=fq]:checked').value;
+    const upd={freq:v,anchor:v==='fortnightly'?$('fq-a').value:null,month_week:v==='monthly'?Number($('fq-n').value):null};
+    const r=await sb.from('round_stops').update(upd).eq('id',id);
+    if(r.error)return toast(/freq|anchor|month_week/.test(r.error.message)?'Run the new SQL in Supabase first (update-nov25.sql).':isNet(r.error)?'No signal. Try again when you’re back online.':r.error.message,9000);
+    Object.assign(s,upd);saveRL();$('dlg').close();renderRound();
+    toast(s.shop_name+': '+(freqLabel(s)||'every week')+'.');
+  };
 }
 function renderRoundChips(){
   const el=$('rdchips');if(!el)return;const q=($('rdfilter').value||'').trim().toLowerCase();
@@ -1215,7 +1269,7 @@ function renderRoundChips(){
   el.innerHTML=list.map(s=>`<button class="g s" data-rsh="${s.id}">+ ${esc(s.name)}</button>`).join('')||`<span class="mut">${myShops.length?'No more shops to add.':'Shops you search for are saved here.'}</span>`;
 }
 $('rdfilter').oninput=renderRoundChips;
-$('rddays').onclick=e=>{const b=e.target.closest('button');if(!b||!b.dataset.wd)return;rdDay=Number(b.dataset.wd);renderRound()};
+$('rddays').onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.wk){rdWeek+=Number(b.dataset.wk);renderRound();return}if(!b.dataset.wd)return;rdDay=Number(b.dataset.wd);renderRound()};
 $('rdedit').onclick=()=>{rdEdit=!rdEdit;$('rdedit').textContent=rdEdit?'Done':'✎ Edit';renderRound()};
 async function addToRound(x,wd){
   wd=wd||rdDay;const key=shopKey(x),name=x.shop_name||x.name;
@@ -1235,6 +1289,7 @@ $('rdchips').onclick=async e=>{
 $('rdlist').onclick=async e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.stock){const s=round.find(x=>x.shop_key===b.dataset.stock);return openStockFor(b.dataset.stock,s?s.shop_name:'')}
+  if(b.dataset.rfq)return openFreq(b.dataset.rfq);
   const id=b.dataset.rup||b.dataset.rdn||b.dataset.rrm;if(!id)return;
   const list=dayList(rdDay),i=list.findIndex(x=>x.id===id);if(i<0)return;
   if(b.dataset.rrm){
@@ -1245,16 +1300,19 @@ $('rdlist').onclick=async e=>{
   [list[i],list[j]]=[list[j],list[i]];saveRoundOrder(list);
 };
 function saveRoundOrder(list){
+  // list may be only the shops due today: keep the others in their places
+  const full=dayList(rdDay),ids=new Set(list.map(x=>x.id)),q=[...list];
+  list=full.map(x=>ids.has(x.id)?q.shift():x);
   list.forEach((x,k)=>x.sort_order=k);saveRL();renderRound();
   Promise.all(list.map((x,k)=>sb.from('round_stops').update({sort_order:k}).eq('id',x.id))).catch(()=>{});
 }
 $('rdbest').onclick=async()=>{
   const b=$('rdbest');b.disabled=true;toast('Working out the best route…');
-  const r=await bestOrder(dayList(rdDay));b.disabled=false;
+  const r=await bestOrder(dueList());b.disabled=false;
   if(r.list)saveRoundOrder(r.list);
   toast(routeMsg(r),8000);
 };
-$('rdmaps').onclick=()=>openInMaps(dayList(rdDay));
+$('rdmaps').onclick=()=>openInMaps(dueList());
 function mountRound(){
   if(!G.places||!$('rdsearch'))return;
   const el=new G.places.PlaceAutocompleteElement({includedRegionCodes:['nz'],locationBias:{center:{lat:-39.35,lng:174.2},radius:50000}});
@@ -1300,7 +1358,7 @@ async function findShop(name){
 }
 $('rdpaste').onclick=()=>{
   $('dlgbody').onclick=null;
-  $('dlgbody').innerHTML=`<b style="font-size:18px">Paste your round</b><p class="mut" style="margin:4px 0 10px">Copy the shop names from your spreadsheet and paste them here, one per line. If you copy a whole week with the day names across the top row, each column goes on its own day.</p><textarea id="pp-t" style="min-height:180px" placeholder="Brixton Motors&#10;Out West Automotive&#10;…"></textarea><label class="mut" style="display:block;margin-top:8px">Add to (for a plain list)</label><select id="pp-d">${[1,2,3,4,5,6,7].map(k=>`<option value="${k}" ${k===rdDay?'selected':''}>${DAYL[k]}</option>`).join('')}</select><div id="pp-out" class="mut"></div><div class="row"><button id="pp-go" style="flex:1">Add shops</button><button class="g" id="pp-x">Close</button></div>`;
+  $('dlgbody').innerHTML=`<b style="font-size:18px">Import a list</b><p class="mut" style="margin:4px 0 10px">Optional shortcut for setting up. Everything comes in as every week; change any to fortnightly or monthly with ✎ Edit. Paste shop names, one per line, from a note, text or spreadsheet. If you paste a whole week with the day names across the top row, each column goes on its own day.</p><textarea id="pp-t" style="min-height:180px" placeholder="Brixton Motors&#10;Out West Automotive&#10;…"></textarea><label class="mut" style="display:block;margin-top:8px">Add to (for a plain list)</label><select id="pp-d">${[1,2,3,4,5,6,7].map(k=>`<option value="${k}" ${k===rdDay?'selected':''}>${DAYL[k]}</option>`).join('')}</select><div id="pp-out" class="mut"></div><div class="row"><button id="pp-go" style="flex:1">Add shops</button><button class="g" id="pp-x">Close</button></div>`;
   $('dlg').showModal();$('pp-x').onclick=()=>{$('dlg').close();renderRound()};
   $('pp-go').onclick=async()=>{
     const items=parsePaste($('pp-t').value,Number($('pp-d').value));
@@ -1336,7 +1394,7 @@ function setTab(t){
   if(t==='map')renderMap();
   if(t==='ret')renderRet();
   if(t==='stock'){renderStockShops();renderStock();loadStock()}
-  if(t==='round'){renderRound();loadRound();loadStock()}
+  if(t==='round'){rdToday();renderRound();loadRound();loadStock()}
   if(t==='notes'){renderNotes();loadNotes()}
   window.scrollTo(0,0);
 }

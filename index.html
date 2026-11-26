@@ -100,6 +100,7 @@
       <div class="card hide" id="stcard">
         <div class="row sp"><b id="stname" style="font-size:17px"></b><span class="row"><button class="g s" id="stshop">Shop page</button><button class="g s" id="stclose">✕</button></span></div>
         <div id="stneed" style="margin:8px 0"></div>
+        <div class="row sp hide" id="stsortrow" style="margin:4px 0"><span class="mut">Order</span><select id="stsort" class="sin" style="width:auto!important"><option value="entered">As entered</option><option value="az">A–Z</option><option value="low">Low first</option></select></div>
         <div id="stitems"></div>
         <div style="margin-top:12px">
           <input id="stnew" placeholder="Add an item (e.g. Oil filter Z418)">
@@ -927,14 +928,15 @@ async function calcKm(){
 }
 
 /* ---------- workshop stock ---------- */
-let stock=[],stSel=null;const stT={};
+let stock=[],stSel=null,stSort='entered';
+try{stSort=localStorage.getItem('dlstsort')||'entered'}catch(e){}const stT={};
 try{stock=JSON.parse(localStorage.getItem('dlstock')||'[]')||[]}catch(e){}
 const saveStockL=()=>{try{localStorage.setItem('dlstock',JSON.stringify(stock))}catch(e){}};
 const shopKey=x=>x.place_id||String(x.shop_name||x.name||'').trim().toLowerCase();
 const lowOf=key=>stock.filter(i=>i.shop_key===key&&Number(i.have)<Number(i.target));
 const nf=n=>String(Math.round(Number(n)*100)/100);
 async function loadStock(){
-  const r=await sb.from('stock_items').select('*').order('item');
+  const r=await sb.from('stock_items').select('*').order('created_at').order('id');
   if(r.error){
     if(!isNet(r.error)){$('sterr').textContent='Stock isn’t set up yet. Run the new SQL in Supabase, then reopen the app.';$('sterr').classList.remove('hide')}
     return;
@@ -961,12 +963,16 @@ function openStockFor(key,name){
   setTimeout(()=>$('stcard').scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
 $('stclose').onclick=()=>{stSel=null;renderStock()};
+$('stsort').onchange=()=>{stSort=$('stsort').value;try{localStorage.setItem('dlstsort',stSort)}catch(e){}renderStock()};
 $('stshop').onclick=()=>{if(stSel)openShop(stSel.key,stSel.name)};
 function renderStock(){
   const card=$('stcard');if(!card)return;
   if(!stSel){card.classList.add('hide');return}
   card.classList.remove('hide');$('stname').textContent=stSel.name;
-  const items=stock.filter(i=>i.shop_key===stSel.key).sort((a,b)=>((Number(b.have)<Number(b.target))-(Number(a.have)<Number(a.target)))||a.item.localeCompare(b.item));
+  const isLow=i=>Number(i.have)<Number(i.target),when=i=>i.created_at?new Date(i.created_at).getTime():9e15;
+  const entered=(a,b)=>(when(a)-when(b))||String(a.id).localeCompare(String(b.id));
+  const items=stock.filter(i=>i.shop_key===stSel.key).sort(stSort==='az'?(a,b)=>a.item.localeCompare(b.item):stSort==='low'?(a,b)=>(isLow(b)-isLow(a))||entered(a,b):entered);
+  $('stsort').value=stSort;$('stsortrow').classList.toggle('hide',items.length<2);
   const low=items.filter(i=>Number(i.have)<Number(i.target));
   $('stneed').innerHTML=!items.length?'<span class="mut">No items yet. Add what this workshop keeps on the shelf below.</span>':
     low.length?`<div><b class="need">Needs ${low.length} item${low.length>1?'s':''}:</b> ${low.map(i=>esc(nf(i.target-i.have))+' × '+esc(i.item)).join(', ')}</div><div class="row" style="margin-top:8px;flex-wrap:wrap"><button class="g s" id="stcopy">Copy list</button><button class="g s" id="stfull">✓ All restocked</button></div>`:
